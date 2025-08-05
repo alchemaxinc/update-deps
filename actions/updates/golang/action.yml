@@ -1,0 +1,50 @@
+name: 'Go Update Dependencies'
+description: 'Update Go module dependencies'
+inputs:
+  token:
+    description: 'GitHub token'
+    required: true
+    default: ${{ github.token }}
+
+  base-branch:
+    description: 'Base branch for PR'
+    required: true
+    default: 'develop'
+
+  branch-prefix:
+    description: 'Branch prefix'
+    required: true
+    default: 'update-dependencies'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout and setup
+      uses: ./.github/actions/shared/checkout-and-setup
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Install Go
+      uses: actions/setup-go@v5
+
+    - name: Update dependencies
+      shell: bash
+      run: |
+        go get -t -u ./...
+        go mod tidy
+
+    - name: Check for changes
+      id: changes
+      uses: ./.github/actions/shared/check-changes
+      with:
+        files: 'go.mod go.sum'
+
+    - name: Create Pull Request
+      if: steps.changes.outputs.changed == 'true'
+      uses: ./.github/actions/shared/create-pr
+      with:
+        token: ${{ inputs.token }}
+        base-branch: ${{ inputs.base-branch }}
+        branch-prefix: ${{ inputs.branch-prefix }}
+        files: 'go.mod go.sum'
+        language: 'Go'

@@ -1,0 +1,86 @@
+name: 'NPM Update Dependencies'
+description: 'Update NPM dependencies using npm-check-updates'
+inputs:
+  token:
+    description: 'GitHub token'
+    required: true
+    default: ${{ github.token }}
+
+  base-branch:
+    description: 'Base branch for PR'
+    required: true
+    default: 'develop'
+
+  branch-prefix:
+    description: 'Branch prefix'
+    required: true
+    default: 'update-dependencies'
+
+  excluded-packages:
+    description: 'Packages to exclude from updates, in a comma-separated list format'
+    example: 'package1,package2'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout and setup
+      uses: ./.github/actions/shared/checkout-and-setup
+      with:
+        token: ${{ inputs.token }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        cache: 'npm'
+        node-version-file: '.nvmrc'
+
+    - name: Cache npm-check-updates
+      id: cache-ncu
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm-global
+        key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          npm-ncu-${{ runner.os }}-
+
+    - name: Install npm-check-updates
+      if: steps.cache-ncu.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm config set prefix ~/.npm-global
+        npm install -g npm-check-updates
+
+    - name: Add ~/.npm-global/bin to PATH
+      shell: bash
+      run: echo "~/.npm-global/bin" >> $GITHUB_PATH
+
+    - name: Update dependencies
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.excluded-packages }}" ]; then
+          ncu -u -x "${{ inputs.excluded-packages }}"
+          exit 0
+        fi
+        
+        ncu -u
+
+    - name: Install updated dependencies
+      shell: bash
+      run: npm install
+
+    - name: Check for changes
+      id: changes
+      uses: ./.github/actions/shared/check-changes
+      with:
+        files: 'package.json package-lock.json'
+
+    - name: Create Pull Request
+      if: steps.changes.outputs.changed == 'true'
+      uses: ./.github/actions/shared/create-pr
+      with:
+        token: ${{ inputs.token }}
+        base-branch: ${{ inputs.base-branch }}
+        branch-prefix: ${{ inputs.branch-prefix }}
+        files: 'package.json package-lock.json'
+        language: 'NPM'

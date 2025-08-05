@@ -1,0 +1,24 @@
+name: 'Check Changes'
+description: 'Check if specified files have changes'
+inputs:
+  files:
+    description: 'Space-separated list of files to check'
+    required: true
+
+outputs:
+  changed:
+    description: 'Whether files have changed'
+    value: ${{ steps.check.outputs.changed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for changes
+      id: check
+      shell: bash
+      run: |
+        if git diff --quiet ${{ inputs.files }}; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi

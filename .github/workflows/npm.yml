@@ -1,0 +1,30 @@
+name: Update NPM Dependencies
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'Base branch for PR'
+        type: string
+        required: true
+
+      excluded-packages:
+        description: 'Packages to exclude from updates'
+        type: string
+        required: false
+
+    secrets:
+      GITHUB_TOKEN:
+        description: 'GitHub token for authentication'
+        required: true
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update NPM Dependencies
+        uses: ./.github/actions/npm-update
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base-branch: ${{ github.event.inputs.base-branch }}
+          excluded-packages: ${{ github.event.inputs.excluded-packages }}
