@@ -1,0 +1,64 @@
+name: Semantic Versioning and Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  semantic-release:
+    name: Semantic Versioning and Release
+    runs-on: ubuntu-latest
+    needs: lint
+
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current year and month month for caching
+        id: date
+        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+
+      - name: Cache semantic-release tools
+        id: cache-semantic-release
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm-semantic-release
+          key: npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
+          restore-keys: |
+            npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
+            npm-semantic-release-${{ runner.os }}-
+
+      - name: Install semantic-release and plugins
+        if: steps.cache-semantic-release.outputs.cache-hit != 'true'
+        run: |
+          npm config set prefix ~/.npm-semantic-release
+          npm install -g \
+            semantic-release \
+            @semantic-release/commit-analyzer \
+            @semantic-release/release-notes-generator \
+            @semantic-release/npm \
+            @semantic-release/github
+
+      - name: Add semantic-release to PATH
+        run: echo "$HOME/.npm-semantic-release/bin" >> $GITHUB_PATH
+
+      - name: Run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release
