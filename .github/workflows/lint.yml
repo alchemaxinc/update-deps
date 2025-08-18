@@ -1,0 +1,94 @@
+name: Lint
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: Commit Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current year and month for caching
+        id: date
+        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+
+      - name: Cache commitlint tools
+        id: cache-commitlint
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm-commitlint
+          key: npm-commitlint-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
+          restore-keys: |
+            npm-commitlint-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
+            npm-commitlint-${{ runner.os }}-
+
+      - name: Install commitlint and dependencies
+        if: steps.cache-commitlint.outputs.cache-hit != 'true'
+        run: |
+          npm config set prefix ~/.npm-commitlint
+          npm install -g \
+            @commitlint/cli \
+            @commitlint/config-conventional
+
+      - name: Add commitlint to PATH
+        run: echo "$HOME/.npm-commitlint/bin" >> $GITHUB_PATH
+
+      # To avoid having a package.json maintained in this repo, we just pretend to be a Node project during the run
+      - name: Create symlink for commitlint config
+        run: |
+          mkdir -p node_modules/@commitlint
+          ln -sf ~/.npm-commitlint/lib/node_modules/@commitlint/config-conventional node_modules/@commitlint/config-conventional
+
+      - name: Run commitlint on all commits
+        run: commitlint --from origin/main --to HEAD --verbose
+
+  prettier:
+    name: Prettier Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current year and month for caching
+        id: date
+        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+
+      - name: Cache prettier tools
+        id: cache-prettier
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm-prettier
+          key: npm-prettier-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
+          restore-keys: |
+            npm-prettier-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
+            npm-prettier-${{ runner.os }}-
+
+      - name: Install Prettier
+        if: steps.cache-prettier.outputs.cache-hit != 'true'
+        run: |
+          npm config set prefix ~/.npm-prettier
+          npm install -g prettier
+
+      - name: Add Prettier to PATH
+        run: echo "$HOME/.npm-prettier/bin" >> $GITHUB_PATH
+
+      - name: Run Prettier check
+        run: prettier --check .
