@@ -89,7 +89,7 @@ runs:
         branch-prefix: ${{ inputs.branch-prefix }}
         files: 'package.json package-lock.json'
         commit-message: ${{ inputs.commit-message }}
-        pr-title: ${ inputs.pr-title }
+        pr-title: ${{ inputs.pr-title }}
         pr-body: |
           # :arrows_counterclockwise: NPM Dependencies Update
 
