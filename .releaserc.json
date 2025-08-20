@@ -5,6 +5,6 @@
     "@semantic-release/release-notes-generator",
     "@semantic-release/github"
   ],
-  "repositoryUrl": "https://github.com/alchemaxinc/composite-toolbox",
+  "repositoryUrl": "https://github.com/alchemaxinc/update-deps",
   "tagFormat": "v${version}"
 }
