@@ -36,14 +36,14 @@ jobs:
 
 ## :gear: Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `token` | GitHub token for authentication | :white_check_mark: | `${{ github.token }}` |
-| `base-branch` | Base branch for the pull request | :white_check_mark: | `develop` |
-| `branch-prefix` | Prefix for the update branch | :white_check_mark: | `update-dependencies` |
-| `pr-title` | Title for the pull request | :x: | `Update NPM Dependencies` |
-| `commit-message` | Commit message for the update | :x: | `Update NPM dependencies` |
-| `excluded-packages` | Comma-separated list of packages to exclude | :x: | - |
+| Input               | Description                                 | Required           | Default                   |
+| ------------------- | ------------------------------------------- | ------------------ | ------------------------- |
+| `token`             | GitHub token for authentication             | :white_check_mark: | `${{ github.token }}`     |
+| `base-branch`       | Base branch for the pull request            | :white_check_mark: | `develop`                 |
+| `branch-prefix`     | Prefix for the update branch                | :white_check_mark: | `update-dependencies`     |
+| `pr-title`          | Title for the pull request                  | :x:                | `Update NPM Dependencies` |
+| `commit-message`    | Commit message for the update               | :x:                | `Update NPM dependencies` |
+| `excluded-packages` | Comma-separated list of packages to exclude | :x:                | -                         |
 
 ## :warning: Prerequisites
 

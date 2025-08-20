@@ -32,11 +32,11 @@ jobs:
 
 ## :gear: Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `token` | GitHub token for authentication | :white_check_mark: | `${{ github.token }}` |
-| `base-branch` | Base branch for the pull request | :white_check_mark: | `develop` |
-| `branch-prefix` | Prefix for the update branch | :white_check_mark: | `update-dependencies` |
+| Input           | Description                      | Required           | Default               |
+| --------------- | -------------------------------- | ------------------ | --------------------- |
+| `token`         | GitHub token for authentication  | :white_check_mark: | `${{ github.token }}` |
+| `base-branch`   | Base branch for the pull request | :white_check_mark: | `develop`             |
+| `branch-prefix` | Prefix for the update branch     | :white_check_mark: | `update-dependencies` |
 
 ## :warning: Prerequisites
 

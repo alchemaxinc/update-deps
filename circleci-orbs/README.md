@@ -36,15 +36,15 @@ jobs:
 
 ## :gear: Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `token` | GitHub token for authentication | :white_check_mark: | `${{ github.token }}` |
-| `base-branch` | Base branch for the pull request | :white_check_mark: | `develop` |
-| `branch-prefix` | Prefix for the update branch | :white_check_mark: | `update-orbs` |
-| `pr-title` | Title for the pull request | :x: | `Update CircleCI Orbs` |
-| `commit-message` | Commit message for the update | :x: | `Update CircleCI orbs` |
-| `circleci-config-file` | Path to CircleCI config file | :x: | `.circleci/config.yml` |
-| `yq-version` | Version of yq tool to use | :x: | `v4.44.1` |
+| Input                  | Description                      | Required           | Default                |
+| ---------------------- | -------------------------------- | ------------------ | ---------------------- |
+| `token`                | GitHub token for authentication  | :white_check_mark: | `${{ github.token }}`  |
+| `base-branch`          | Base branch for the pull request | :white_check_mark: | `develop`              |
+| `branch-prefix`        | Prefix for the update branch     | :white_check_mark: | `update-orbs`          |
+| `pr-title`             | Title for the pull request       | :x:                | `Update CircleCI Orbs` |
+| `commit-message`       | Commit message for the update    | :x:                | `Update CircleCI orbs` |
+| `circleci-config-file` | Path to CircleCI config file     | :x:                | `.circleci/config.yml` |
+| `yq-version`           | Version of yq tool to use        | :x:                | `v4.44.1`              |
 
 ## :warning: Prerequisites
 
