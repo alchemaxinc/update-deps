@@ -1,4 +1,5 @@
 # Update Dependencies Actions :arrows_counterclockwise:
+
 ![Logo](docs/logo.png)
 
 A collection of convenient GitHub Actions for automatically updating your software dependencies.
