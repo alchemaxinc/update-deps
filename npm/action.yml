@@ -4,7 +4,7 @@ description: 'Update NPM dependencies using npm-check-updates'
 
 inputs:
   token:
-    required: true
+    required: false
     description: 'GitHub token'
     default: ${{ github.token }}
 
@@ -14,7 +14,7 @@ inputs:
     default: 'develop'
 
   branch-prefix:
-    required: true
+    required: false
     description: 'Branch prefix'
     default: 'update-dependencies'
 
