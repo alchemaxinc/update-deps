@@ -18,9 +18,7 @@ jobs:
     needs: lint
 
     permissions:
-      issues: write
       contents: write
-      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -62,3 +60,83 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: semantic-release
+
+  semantic-release-flowing-tags:
+    name: Add flowing tags
+    runs-on: ubuntu-latest
+    needs: semantic-release
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest tag
+        id: latest-tag
+        run: |
+          git fetch --tags
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Is tag semantic?
+        id: is-tag-semantic
+        if: steps.latest-tag.outputs.tag != ''
+        run: |
+          TAG="${{ steps.latest-tag.outputs.tag }}"
+
+          # Skip if tag doesn't match semantic version pattern
+          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::debug::Tag $TAG doesn't match semantic version pattern, skipping moving tags"
+            echo "semantic=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "semantic=true" >> $GITHUB_OUTPUT
+          echo "semantic-tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Extract version tag
+        id: major-minor-tags
+        if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
+        run: |
+          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
+          VERSION=${TAG#v}
+          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          echo "::debug::Extracted version parts -> MAJOR=$MAJOR, MINOR=$MINOR from TAG=$TAG"
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+
+      - name: Push major tag
+        id: push-major
+        if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
+          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
+          MAJOR_TAG="v$MAJOR"
+          echo "::debug::Creating/updating tag $MAJOR_TAG to point to $TAG"
+          git tag -f "$MAJOR_TAG" "$TAG"
+          git push origin "$MAJOR_TAG" --force
+
+      - name: Push minor tag
+        id: push-minor
+        if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
+          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
+          MINOR="${{ steps.major-minor-tags.outputs.minor }}"
+          MINOR_TAG="v$MAJOR.$MINOR"
+          echo "::debug::Creating/updating tag $MINOR_TAG to point to $TAG"
+          git tag -f "$MINOR_TAG" "$TAG"
+          git push origin "$MINOR_TAG" --force
