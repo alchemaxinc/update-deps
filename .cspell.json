@@ -1,5 +1,6 @@
 {
   "language": "en",
+  "words": ["alchemaxinc"],
   "files": ["*.md", "*/**/*.md"],
   "ignoreWords": [],
   "ignorePaths": [],
