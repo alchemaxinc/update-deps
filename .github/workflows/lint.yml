@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   commitlint:
-    name: Commit Lint
+    name: Commits
     runs-on: ubuntu-latest
 
     steps:
@@ -57,14 +57,13 @@ jobs:
         run: commitlint --from origin/main --to HEAD --verbose
 
   prettier:
-    name: Prettier Check
+    name: Formatting
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get current year and month for caching
@@ -92,3 +91,39 @@ jobs:
 
       - name: Run Prettier check
         run: prettier --check .
+
+  cspell:
+    name: Spelling
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current year and month for caching
+        id: date
+        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+
+      - name: Cache cspell tools
+        id: cache-cspell
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm-cspell
+          key: npm-cspell-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
+          restore-keys: |
+            npm-cspell-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
+            npm-cspell-${{ runner.os }}-
+
+      - name: Install CSpell
+        if: steps.cache-cspell.outputs.cache-hit != 'true'
+        run: |
+          npm config set prefix ~/.npm-cspell
+          npm install -g cspell
+
+      - name: Add CSpell to PATH
+        run: echo "$HOME/.npm-cspell/bin" >> $GITHUB_PATH
+
+      - name: Run CSpell check
+        run: cspell
