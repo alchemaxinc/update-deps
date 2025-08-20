@@ -18,6 +18,16 @@ inputs:
     description: 'Branch prefix'
     default: 'update-dependencies'
 
+  pr-title:
+    required: false
+    description: 'Title for the pull request'
+    default: 'Update NPM Dependencies'
+
+  commit-message:
+    required: false
+    description: 'The commit message for the update'
+    default: 'Update NPM dependencies'
+
   excluded-packages:
     required: false
     description: 'Packages to exclude from updates, in a comma-separated list format'
@@ -78,8 +88,8 @@ runs:
         base-branch: ${{ inputs.base-branch }}
         branch-prefix: ${{ inputs.branch-prefix }}
         files: 'package.json package-lock.json'
-        commit-message: 'Update NPM dependencies'
-        pr-title: 'Update NPM dependencies'
+        commit-message: ${{ inputs.commit-message }}
+        pr-title: ${ inputs.pr-title }
         pr-body: |
           # :arrows_counterclockwise: NPM Dependencies Update
 
