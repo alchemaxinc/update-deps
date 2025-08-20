@@ -3,6 +3,10 @@
 This GitHub Action automatically updates CircleCI orbs to their latest versions and creates a pull request with the
 changes.
 
+> [!IMPORTANT]  
+> This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It
+> fetches the latest releases from the corresponding GitHub repositories.
+
 ## :rocket: Usage
 
 ```yaml
@@ -44,8 +48,3 @@ jobs:
 - Your repository must have a CircleCI configuration file (`.circleci/config.yml` by default)
 - The configuration must contain orbs from the CircleCI Public orb registry
 - The action requires write permissions to create branches and pull requests
-
-## :information_source: Supported Orbs
-
-This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It
-fetches the latest releases from the corresponding GitHub repositories.

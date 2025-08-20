@@ -2,6 +2,9 @@
 
 This GitHub Action automatically updates Go module dependencies and creates a pull request with the changes.
 
+> [!IMPORTANT]  
+> This action updates dependencies using `go get -u` and thus does not update to new major versions.
+
 ## :rocket: Usage
 
 ```yaml
