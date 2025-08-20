@@ -1,14 +1,7 @@
 # Update NPM Dependencies :package:
 
-This GitHub Action automatically updates NPM dependencies using `npm-check-updates` and creates a pull request with the changes.
-
-## :sparkles: Features
-
-- :arrows_counterclockwise: Updates all NPM dependencies to their latest versions
-- :package: Uses `npm-check-updates` for reliable dependency updates
-- :octocat: Automatically creates a pull request with the changes
-- :no_entry_sign: Support for excluding specific packages from updates
-- :memo: Customizable commit messages and PR titles
+This GitHub Action automatically updates NPM dependencies using `npm-check-updates` and creates a pull request with the
+changes.
 
 ## :rocket: Usage
 
@@ -50,20 +43,3 @@ jobs:
 - Your repository must have a `package.json` file
 - Node.js version should be specified in `.nvmrc` file
 - The action requires write permissions to create branches and pull requests
-
-## :memo: What it does
-
-1. :arrow_down: Checks out your repository
-2. :wrench: Sets up Node.js environment with npm caching
-3. :inbox_tray: Installs and caches `npm-check-updates`
-4. :arrows_counterclockwise: Updates dependencies (excluding specified packages if any)
-5. :package: Runs `npm install` to update the lockfile
-6. :mag: Checks for changes in `package.json` and `package-lock.json`
-7. :octocat: Creates a pull request if there are updates
-
-## :bulb: Tips
-
-- :calendar: Use scheduled workflows to automatically check for updates
-- :shield: Always review the generated pull request before merging
-- :test_tube: Ensure your CI/CD pipeline runs tests on the update branch
-- :books: Check release notes for major version updates

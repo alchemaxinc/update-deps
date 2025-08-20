@@ -2,13 +2,6 @@
 
 This GitHub Action automatically updates Go module dependencies and creates a pull request with the changes.
 
-## :sparkles: Features
-
-- :arrows_counterclockwise: Updates all Go module dependencies to their latest versions
-- :wrench: Uses `go get -u` and `go mod tidy` for clean updates
-- :octocat: Automatically creates a pull request with the changes
-- :memo: Customizable base branch and branch prefix
-
 ## :rocket: Usage
 
 ```yaml
@@ -43,20 +36,3 @@ jobs:
 - Your repository must have a `go.mod` file
 - Go version should be specified in the `go.mod` file
 - The action requires write permissions to create branches and pull requests
-
-## :memo: What it does
-
-1. :arrow_down: Checks out your repository
-2. :wrench: Sets up Go environment with module caching
-3. :arrows_counterclockwise: Runs `go get -t -u ./...` to update all dependencies
-4. :broom: Runs `go mod tidy` to clean up the module files
-5. :mag: Checks for changes in `go.mod` and `go.sum`
-6. :octocat: Creates a pull request if there are updates
-
-## :bulb: Tips
-
-- :calendar: Use scheduled workflows to automatically check for updates
-- :shield: Always review the generated pull request before merging
-- :test_tube: Ensure your CI/CD pipeline runs tests on the update branch
-- :books: Check for breaking changes in major version updates
-- :warning: Be cautious with major version updates as they may contain breaking changes

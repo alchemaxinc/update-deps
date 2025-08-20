@@ -1,14 +1,7 @@
 # Update CircleCI Orbs :arrows_counterclockwise:
 
-This GitHub Action automatically updates CircleCI orbs to their latest versions and creates a pull request with the changes.
-
-## :sparkles: Features
-
-- :arrows_counterclockwise: Updates all CircleCI orbs to their latest versions
-- :mag: Automatically detects orbs in your CircleCI configuration
-- :octocat: Creates a pull request with the changes
-- :gear: Configurable CircleCI config file path
-- :memo: Customizable commit messages and PR titles
+This GitHub Action automatically updates CircleCI orbs to their latest versions and creates a pull request with the
+changes.
 
 ## :rocket: Usage
 
@@ -52,24 +45,7 @@ jobs:
 - The configuration must contain orbs from the CircleCI Public orb registry
 - The action requires write permissions to create branches and pull requests
 
-## :memo: What it does
-
-1. :arrow_down: Checks out your repository
-2. :wrench: Installs and caches the `yq` YAML processor
-3. :mag: Scans your CircleCI config for orb references
-4. :arrows_counterclockwise: Fetches latest versions from CircleCI Public orb registry
-5. :pencil2: Updates orb versions in the configuration file
-6. :mag: Checks for changes in the CircleCI config file
-7. :octocat: Creates a pull request if there are updates
-
-## :bulb: Tips
-
-- :calendar: Use scheduled workflows to automatically check for updates
-- :shield: Always review the generated pull request before merging
-- :test_tube: Test your CircleCI pipeline with the updated orbs
-- :books: Check orb changelogs for breaking changes
-- :warning: Be cautious with major version updates as they may contain breaking changes
-
 ## :information_source: Supported Orbs
 
-This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It fetches the latest releases from the corresponding GitHub repositories.
+This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It
+fetches the latest releases from the corresponding GitHub repositories.
