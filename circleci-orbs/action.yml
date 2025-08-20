@@ -1,122 +1,140 @@
-name: Update CircleCI Orbs
+name: 'Update CircleCI Orbs'
 
-env:
-  BASE_BRANCH: 'develop'
-  BRANCH_PREFIX: 'update-orbs'
-  YQ_VERSION: 'v4.44.1'
+description: 'Update CircleCI orbs to their latest versions'
 
-on:
-  workflow_dispatch:
+inputs:
+  token:
+    required: true
+    description: 'GitHub token'
+    default: ${{ github.token }}
 
-  # Weekly on Mondays at 10 AM UTC
-  schedule:
-    - cron: '0 10 * * 1'
+  base-branch:
+    required: true
+    description: 'Base branch for PR'
+    default: 'develop'
 
-permissions:
-  contents: write
-  pull-requests: write
+  branch-prefix:
+    required: true
+    description: 'Branch prefix'
+    default: 'update-orbs'
 
-jobs:
-  update-orbs:
-    runs-on: ubuntu-latest
+  pr-title:
+    required: false
+    description: 'Title for the pull request'
+    default: 'Update CircleCI Orbs'
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ github.token }}
+  commit-message:
+    required: false
+    description: 'The commit message for the update'
+    default: 'Update CircleCI orbs'
 
-      - name: Cache yq binary
-        id: cache-yq
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/bin/yq
-          key: yq-${{ env.YQ_VERSION }}-linux-amd64
+  circleci-config-file:
+    required: false
+    description: 'Path to the CircleCI config file'
+    default: '.circleci/config.yml'
 
-      - name: Install yq
-        if: steps.cache-yq.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/.local/bin
-          curl -L https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 -o ~/.local/bin/yq
-          chmod +x ~/.local/bin/yq
+  yq-version:
+    required: false
+    description: 'Version of yq to use'
+    default: 'v4.44.1'
 
-      - name: Add yq to PATH
-        run: echo "~/.local/bin" >> $GITHUB_PATH
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout and setup
+      uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+      with:
+        token: ${{ inputs.token }}
 
-      - name: Update CircleCI Orbs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          CONFIG_FILE=".circleci/config.yml"
+    - name: Cache yq binary
+      id: cache-yq
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/bin/yq
+        key: yq-${{ inputs.yq-version }}-linux-amd64
 
-          # Read orbs from config.yml
-          orbs=$(yq eval '.orbs | keys | .[]' "$CONFIG_FILE")
+    - name: Install yq
+      if: steps.cache-yq.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p ~/.local/bin
+        curl -L https://github.com/mikefarah/yq/releases/download/${{ inputs.yq-version }}/yq_linux_amd64 -o ~/.local/bin/yq
+        chmod +x ~/.local/bin/yq
 
-          for orb in $orbs; do
-            echo "Processing orb: $orb"
+    - name: Add yq to PATH
+      shell: bash
+      run: echo "~/.local/bin" >> $GITHUB_PATH
 
-            # Capture the old orb value (namespace@version)
-            old_value=$(yq eval ".orbs.$orb" "$CONFIG_FILE")
+    - name: Update CircleCI Orbs
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        CONFIG_FILE="${{ inputs.circleci-config-file }}"
 
-            # Get the orb namespace (e.g., "circleci/aws-cli" from "circleci/aws-cli@5.3.5")
-            orb_full_name=$(echo "$old_value" | cut -d'@' -f1)
+        # Read orbs from config.yml
+        orbs=$(yq eval '.orbs | keys | .[]' "$CONFIG_FILE")
 
-            # Get latest tag from GitHub
-            latest_tag=$(gh api repos/CircleCI-Public/${orb}-orb/releases/latest --jq '.tag_name' | sed 's/^v//')
+        for orb in $orbs; do
+          echo "::debug::Processing orb: $orb"
 
-            if [ -z "$latest_tag" ]; then
-              echo "Could not find latest tag for ${orb}-orb, failing"
-              exit 1
-            fi
+          # Capture the old orb value (namespace@version)
+          old_value=$(yq eval ".orbs.$orb" "$CONFIG_FILE")
 
-            echo "Latest version: $latest_tag"
+          # Get the orb namespace (e.g., "circleci/aws-cli" from "circleci/aws-cli@5.3.5")
+          orb_full_name=$(echo "$old_value" | cut -d'@' -f1)
+          
+          # Get the current version
+          current_version=$(echo "$old_value" | cut -d'@' -f2)
 
-            sed -i "s|\($orb_full_name@\)[^\"' ]*|\1$latest_tag|" "$CONFIG_FILE"
-            echo "Updated $orb to $latest_tag"
-          done
+          # Get latest tag from GitHub
+          latest_tag=$(gh api repos/CircleCI-Public/${orb}-orb/releases/latest --jq '.tag_name' | sed 's/^v//')
 
-      - name: Check for changes
-        id: changes
-        run: |
-          if git diff --quiet .circleci/config.yml; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            exit 0
+          if [ -z "$latest_tag" ]; then
+            echo "::error::Could not find latest tag for ${orb}-orb, failing"
+            exit 1
           fi
 
-          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "::debug::Latest version: $latest_tag"
 
-      - name: Create Pull Request
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Configure git
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          sed -i "s|\($orb_full_name@\)[^\"' ]*|\1$latest_tag|" "$CONFIG_FILE"
+          echo "::notice::Updated $orb from $current_version to $latest_tag"
+        done
 
-          # Create a new branch using global variable
-          BRANCH_NAME="${{ env.BRANCH_PREFIX }}-$(date +%Y%m%d)-${{ github.run_id }}"
-          git checkout -b "$BRANCH_NAME"
+    - name: Check for changes
+      id: check_changes
+      uses: alchemaxinc/composite-toolbox/check-changes@v1
+      with:
+        files: ${{ inputs.circleci-config-file }}
 
-          # Commit changes
-          git add .circleci/config.yml
-          git commit -m "chore: update CircleCI orbs
+    - name: Create Pull Request
+      if: steps.check_changes.outputs.has_changes == 'true'
+      uses: alchemaxinc/composite-toolbox/create-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        base-branch: ${{ inputs.base-branch }}
+        branch-prefix: ${{ inputs.branch-prefix }}
+        files: ${{ inputs.circleci-config-file }}
+        commit-message: ${{ inputs.commit-message }}
+        pr-title: ${{ inputs.pr-title }}
+        pr-body: |
+          # :arrows_counterclockwise: CircleCI Orbs Update
 
-          This PR was automatically generated by the update-orbs workflow."
+          This pull request automatically updates CircleCI orbs to their latest versions.
 
-          # Push the branch
-          git push --force origin "$BRANCH_NAME"
+          ## :warning: Important Notes
 
-          # Create PR using GitHub CLI
-          gh pr create \
-            --title "chore: update CircleCI orbs" \
-            --body "This PR updates CircleCI orbs to their latest versions.
+          - :robot: This PR was **automatically generated**
+          - :mag: Please **review all changes** carefully before merging
+          - :test_tube: Ensure all tests pass and functionality works as expected
+          - :books: Check for any breaking changes or release notes for updated orbs
 
-          **Changes:**
-          - Updated .circleci/config.yml with new orb versions
+          ## :rocket: Next Steps
 
-          This PR was automatically generated by the \`update-orbs\` workflow.
+          1. Review the orb changes above
+          2. Run tests locally or wait for CI/CD to complete
+          3. Merge when everything looks good!
 
-          Please review the changes and test thoroughly before merging." \
-            --head "$BRANCH_NAME" \
-            --base "${{ env.BASE_BRANCH }}"
+          ---
+
+          *Generated by the CircleCI Orbs Update action* :sparkles:
