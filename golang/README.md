@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Go Dependencies
-        uses: your-org/update-deps/golang@v1
+        uses: alchemaxinc/update-deps/golang@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: 'main'

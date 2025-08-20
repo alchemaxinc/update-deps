@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update CircleCI Orbs
-        uses: your-org/update-deps/circleci-orbs@v1
+        uses: alchemaxinc/update-deps/circleci-orbs@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: 'main'
