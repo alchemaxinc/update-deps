@@ -11,7 +11,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 jobs:
@@ -29,17 +29,17 @@ jobs:
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG="${{ github.event.release.tag_name }}"
             echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "::notice::Updating documentation to tag: $TAG"
+            echo "::debug::Updating documentation to tag: $TAG"
             exit 0
           fi
 
           TAG="${{ github.event.inputs.tag }}"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "::notice::Updating documentation to tag: $TAG"
+          echo "::debug::Updating documentation to tag: $TAG"
 
       - name: Sync tags in documentation
         id: sync-tags
-#        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
+        #        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
         uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@dotkas/add-docs-tags-updater-script
         with:
           file-extensions: '.md'
@@ -47,13 +47,13 @@ jobs:
           current-tag: ${{ steps.get-tag.outputs.tag }}
 
       - name: Create Pull Request
-        if: steps.sync-tags.outputs.files_updated != '0'
+        if: steps.sync-tags.outputs.files_updated != ''
         uses: alchemaxinc/composite-toolbox/create-pr@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           base-branch: 'main'
           branch-prefix: 'update-docs-tags'
-          files: ${{ steps.sync-tags.outputs.updated_files_list }}
+          files: ${{ steps.sync-tags.outputs.files_updated }}
           commit-message: 'docs: update action tags to `${{ steps.get-tag.outputs.tag }}`'
           pr-title: 'Update documentation tags to `${{ steps.get-tag.outputs.tag }}`'
           pr-body: |
