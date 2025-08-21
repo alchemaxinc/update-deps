@@ -21,7 +21,7 @@ jobs:
       - name: Update Go Dependencies
         uses: alchemaxinc/update-deps/golang@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           base-branch: 'main'
           branch-prefix: 'update-go-deps'
 ```

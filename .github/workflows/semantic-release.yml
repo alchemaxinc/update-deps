@@ -26,7 +26,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get current year and month month for caching
         id: date
@@ -76,7 +75,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get latest tag
         id: latest-tag
@@ -118,7 +116,7 @@ jobs:
         id: push-major
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
           MAJOR="${{ steps.major-minor-tags.outputs.major }}"
@@ -131,7 +129,7 @@ jobs:
         id: push-minor
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
           MAJOR="${{ steps.major-minor-tags.outputs.major }}"

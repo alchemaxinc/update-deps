@@ -23,7 +23,7 @@ jobs:
       - name: Update CircleCI Orbs
         uses: alchemaxinc/update-deps/circleci-orbs@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           base-branch: 'main'
           branch-prefix: 'update-circleci-orbs'
           pr-title: 'Update CircleCI Orbs'

@@ -19,7 +19,7 @@ jobs:
       - name: Update NPM Dependencies
         uses: alchemaxinc/update-deps/npm@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ github.token }}
           base-branch: 'main'
           branch-prefix: 'update-npm-deps'
           pr-title: 'Update NPM Dependencies'
