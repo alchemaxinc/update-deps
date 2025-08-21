@@ -1,0 +1,72 @@
+name: Update Tags in Documentation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to update documentation to'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update Documentation Tags
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout and setup
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+
+      - name: Get release tag
+        id: get-tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "::debug::Updating documentation to tag: $TAG"
+            exit 0
+          fi
+
+          TAG="${{ github.event.inputs.tag }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "::debug::Updating documentation to tag: $TAG"
+
+      - name: Sync tags in documentation
+        id: sync-tags
+        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
+        with:
+          file-extensions: '.md'
+          github-repo-path: 'alchemaxinc/update-deps'
+          current-tag: ${{ steps.get-tag.outputs.tag }}
+
+      - name: Create Pull Request
+        if: steps.sync-tags.outputs.files_updated != ''
+        uses: alchemaxinc/composite-toolbox/create-pr@v1
+        with:
+          token: ${{ github.token }}
+          base-branch: 'main'
+          branch-prefix: 'update-docs-tags'
+          files: ${{ steps.sync-tags.outputs.files_updated }}
+          commit-message: 'docs: update action tags to \`${{ steps.get-tag.outputs.tag }}\`'
+          pr-title: 'Update documentation tags to \`${{ steps.get-tag.outputs.tag }}\`'
+          pr-body: |
+            # :bookmark: Update Documentation Tags
+
+            This pull request automatically updates GitHub action tags in documentation files to match the latest release.
+
+            ## :information_source: Details
+
+            - :label: **New tag**: `${{ steps.get-tag.outputs.tag }}`
+            - :page_facing_up: **Files updated**: ${{ steps.sync-tags.outputs.files_updated }}
+            - :robot: This PR was **automatically generated** from release `${{ steps.get-tag.outputs.tag }}`
+
+            ## :warning: Important Notes
+
+            - :mag: Please **review all changes** carefully before merging
+            - :gear: Ensure all action references are correctly updated
