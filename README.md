@@ -1,4 +1,4 @@
-# Update Dependencies Actions :arrows_counterclockwise:
+# :arrows_counterclockwise: Update Dependencies Actions
 
 ![Logo](docs/logo.png)
 
