@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update NPM Dependencies
-        uses: alchemaxinc/update-deps/npm@v1
+        uses: alchemaxinc/update-deps/npm@v21
         with:
           token: ${{ github.token }}
           base-branch: 'main'
