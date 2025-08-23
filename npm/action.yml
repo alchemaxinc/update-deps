@@ -32,6 +32,11 @@ inputs:
     required: false
     description: 'Packages to exclude from updates, in a comma-separated list format'
 
+  relock:
+    required: false
+    description: 'Whether package-lock.json should be regenerated, even if no other updates are available'
+    default: 'false'
+
 runs:
   using: 'composite'
   steps:
@@ -71,6 +76,9 @@ runs:
           ncu -u --reject "${{ inputs.excluded-packages }}"
         else
           ncu -u
+        fi
+        if [ "${{ inputs.relock }}" = "true" ]; then
+          rm -f package-lock.json
         fi
         npm install
 
