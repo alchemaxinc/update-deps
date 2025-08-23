@@ -138,3 +138,20 @@ jobs:
           echo "::debug::Creating/updating tag $MINOR_TAG to point to $TAG"
           git tag -f "$MINOR_TAG" "$TAG"
           git push origin "$MINOR_TAG" --force
+
+  trigger-docs-update:
+    name: Trigger docs tags update
+    runs-on: ubuntu-latest
+    needs: semantic-release-flowing-tags
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      actions: write
+
+    steps:
+      - name: Trigger update-tags-in-docs workflow
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run update-tags-in-docs.yml \
+            --repo ${{ github.repository }}
