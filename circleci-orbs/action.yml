@@ -11,7 +11,7 @@ inputs:
   base-branch:
     required: true
     description: 'Base branch for PR'
-    default: 'develop'
+    default: 'main'
 
   branch-prefix:
     required: false
