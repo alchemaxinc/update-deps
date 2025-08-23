@@ -1,6 +1,6 @@
 {
   "language": "en",
-  "words": ["alchemaxinc"],
+  "words": ["alchemaxinc", "relock"],
   "files": ["*.md", "*/**/*.md"],
   "ignoreWords": [],
   "ignorePaths": [],
