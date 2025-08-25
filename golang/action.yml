@@ -21,12 +21,12 @@ inputs:
   pr-title:
     required: false
     description: 'Title for the pull request'
-    default: 'Update NPM Dependencies'
+    default: 'Update Golang Dependencies'
 
   commit-message:
     required: false
     description: 'The commit message for the update'
-    default: 'Update NPM dependencies'
+    default: 'Update Golang dependencies'
 
 runs:
   using: 'composite'
