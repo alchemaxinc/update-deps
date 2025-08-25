@@ -18,6 +18,16 @@ inputs:
     description: 'Branch prefix'
     default: 'update-dependencies'
 
+  pr-title:
+    required: false
+    description: 'Title for the pull request'
+    default: 'Update Golang Dependencies'
+
+  commit-message:
+    required: false
+    description: 'The commit message for the update'
+    default: 'Update Golang dependencies'
+
 runs:
   using: 'composite'
   steps:
@@ -53,8 +63,8 @@ runs:
         base-branch: ${{ inputs.base-branch }}
         branch-prefix: ${{ inputs.branch-prefix }}
         files: 'go.mod go.sum'
-        commit-message: 'Update Go dependencies'
-        pr-title: 'Update Go dependencies'
+        commit-message: ${{ inputs.commit-message }}
+        pr-title: ${{ inputs.pr-title }}
         pr-body: |
           # :arrows_counterclockwise: Go Module Dependencies Update
 
