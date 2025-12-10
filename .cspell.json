@@ -2,7 +2,7 @@
   "language": "en",
   "words": ["alchemaxinc", "relock"],
   "files": ["*.md", "*/**/*.md"],
-  "ignoreWords": [],
+  "ignoreWords": ["tfvars"],
   "ignorePaths": [],
   "dictionaries": [],
   "flagWords": [],
