@@ -51,8 +51,8 @@ jobs:
           base-branch: 'main'
           branch-prefix: 'update-docs-tags'
           files: ${{ steps.sync-tags.outputs.files_updated }}
-          commit-message: 'docs: update action tags to \`${{ steps.get-tag.outputs.tag }}\`'
-          pr-title: 'Update documentation tags to \`${{ steps.get-tag.outputs.tag }}\`'
+          commit-message: 'docs: update action tags to `${{ steps.get-tag.outputs.tag }}`'
+          pr-title: 'Update documentation tags to `${{ steps.get-tag.outputs.tag }}`'
           pr-body: |
             # :bookmark: Update Documentation Tags
 
