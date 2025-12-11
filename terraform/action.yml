@@ -51,14 +51,24 @@ runs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
-    - name: Update Terraform dependencies
-      shell: bash
-      run: python ${{ github.action_path }}/update_provider_versions.py ${{ inputs.working-dir }}
-
-    - name: Run terraform init with upgrade
+    - name: Baseline initialization
       shell: bash
       working-directory: ${{ inputs.working-dir }}
-      run: terraform init -var-file=${{ inputs.var-file-path }} -upgrade
+      run: |
+        if [ -n "${{ inputs.backend-config }}" ]; then
+          terraform init -var-file=${{ inputs.var-file-path }} -backend-config="${{ inputs.backend-config }}"
+        else
+          terraform init -var-file=${{ inputs.var-file-path }}
+        fi
+
+    - name: Get current versions
+      shell: bash
+      working-directory: ${{ inputs.working-dir }}
+      run: terraform version -json > /tmp/terraform_versions.json
+
+    - name: Update Terraform dependencies
+      shell: bash
+      run: python ${{ github.action_path }}/update_provider_versions.py ${{ inputs.working-dir }} /tmp/terraform_versions.json
 
     - name: Terraform validate
       shell: bash
