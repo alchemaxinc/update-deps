@@ -16,15 +16,33 @@ def main():
     )
 
     working_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    versions_file = sys.argv[2] if len(sys.argv) > 2 else None
 
     # Check that working_dir exists and is a directory
     if not os.path.isdir(working_dir):
         logging.error(f"Working directory '{working_dir}' does not exist or is not a directory.")
         sys.exit(1)
 
+    # Check that versions_file is provided
+    if not versions_file:
+        logging.error("Versions file path must be provided as the second argument.")
+        sys.exit(1)
+
+    # Check that versions_file exists
+    if not os.path.isfile(versions_file):
+        logging.error(f"Versions file '{versions_file}' does not exist or is not a file.")
+        sys.exit(1)
+
     # Read current versions
-    with open("/tmp/versions_before.json", "r") as f:
-        current_data = json.load(f)
+    try:
+        with open(versions_file, "r") as f:
+            current_data = json.load(f)
+    except json.JSONDecodeError as e:
+        logging.error(f"Versions file '{versions_file}' is not valid JSON: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"Error reading versions file '{versions_file}': {e}")
+        sys.exit(1)
 
     # Extract providers from current versions
     providers = {}
