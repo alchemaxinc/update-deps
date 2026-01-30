@@ -118,6 +118,7 @@ runs:
         files: ${{ inputs.circleci-config-file }}
 
     - name: Create Pull Request
+      id: open-pr
       if: steps.check_changes.outputs.has_changes == 'true'
       uses: alchemaxinc/composite-toolbox/create-pr@v1
       with:
