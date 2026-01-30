@@ -39,7 +39,7 @@ jobs:
 | `commit-message`    | Commit message for the update                       | :x:                | `Update NPM dependencies` |
 | `excluded-packages` | Comma-separated list of packages to exclude         | :x:                | -                         |
 | `relock`            | Wether `package-lock.json` should be regenerated    | :x:                | `false`                   |
-| `automerge`         | Wether automatic merge should be enabled for the PR | :x:                | `false`                   |
+| `auto-merge`        | Wether automatic merge should be enabled for the PR | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 
