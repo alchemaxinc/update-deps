@@ -146,8 +146,7 @@ jobs:
     name: Trigger docs tags update
     runs-on: ubuntu-latest
     needs: semantic-release-flowing-tags
-    if: github.ref == 'refs/heads/main' && needs.semantic-release-flowing-tags.outputs.latest-tag != ''
-
+    if: false # (Skipping until doc tags updater is fixed) && github.ref == 'refs/heads/main' && needs.semantic-release-flowing-tags.outputs.latest-tag != ''
     permissions:
       actions: write
 
