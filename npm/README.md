@@ -30,15 +30,16 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                      | Required           | Default                   |
-| ------------------- | ------------------------------------------------ | ------------------ | ------------------------- |
-| `base-branch`       | Base branch for the pull request                 | :white_check_mark: | `main`                    |
-| `token`             | GitHub token for authentication                  | :x:                | `${{ github.token }}`     |
-| `branch-prefix`     | Prefix for the update branch                     | :x:                | `update-dependencies`     |
-| `pr-title`          | Title for the pull request                       | :x:                | `Update NPM Dependencies` |
-| `commit-message`    | Commit message for the update                    | :x:                | `Update NPM dependencies` |
-| `excluded-packages` | Comma-separated list of packages to exclude      | :x:                | -                         |
-| `relock`            | Wether `package-lock.json` should be regenerated | :x:                | `false`                   |
+| Input               | Description                                         | Required           | Default                   |
+| ------------------- | --------------------------------------------------- | ------------------ | ------------------------- |
+| `base-branch`       | Base branch for the pull request                    | :white_check_mark: | `main`                    |
+| `token`             | GitHub token for authentication                     | :x:                | `${{ github.token }}`     |
+| `branch-prefix`     | Prefix for the update branch                        | :x:                | `update-dependencies`     |
+| `pr-title`          | Title for the pull request                          | :x:                | `Update NPM Dependencies` |
+| `commit-message`    | Commit message for the update                       | :x:                | `Update NPM dependencies` |
+| `excluded-packages` | Comma-separated list of packages to exclude         | :x:                | -                         |
+| `relock`            | Wether `package-lock.json` should be regenerated    | :x:                | `false`                   |
+| `automerge`         | Wether automatic merge should be enabled for the PR | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 
