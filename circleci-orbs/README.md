@@ -33,15 +33,16 @@ jobs:
 
 ## :gear: Inputs
 
-| Input                  | Description                      | Required           | Default                |
-| ---------------------- | -------------------------------- | ------------------ | ---------------------- |
-| `base-branch`          | Base branch for the pull request | :white_check_mark: | `main`                 |
-| `token`                | GitHub token for authentication  | :x:                | `${{ github.token }}`  |
-| `branch-prefix`        | Prefix for the update branch     | :x:                | `update-orbs`          |
-| `pr-title`             | Title for the pull request       | :x:                | `Update CircleCI Orbs` |
-| `commit-message`       | Commit message for the update    | :x:                | `Update CircleCI orbs` |
-| `circleci-config-file` | Path to CircleCI config file     | :x:                | `.circleci/config.yml` |
-| `yq-version`           | Version of yq tool to use        | :x:                | `v4.44.1`              |
+| Input                  | Description                                         | Required           | Default                |
+| ---------------------- | --------------------------------------------------- | ------------------ | ---------------------- |
+| `base-branch`          | Base branch for the pull request                    | :white_check_mark: | `main`                 |
+| `token`                | GitHub token for authentication                     | :x:                | `${{ github.token }}`  |
+| `branch-prefix`        | Prefix for the update branch                        | :x:                | `update-orbs`          |
+| `pr-title`             | Title for the pull request                          | :x:                | `Update CircleCI Orbs` |
+| `commit-message`       | Commit message for the update                       | :x:                | `Update CircleCI orbs` |
+| `circleci-config-file` | Path to CircleCI config file                        | :x:                | `.circleci/config.yml` |
+| `yq-version`           | Version of yq tool to use                           | :x:                | `v4.44.1`              |
+| `auto-merge`           | Wether automatic merge should be enabled for the PR | :x:                | `false`                |
 
 ## :warning: Prerequisites
 

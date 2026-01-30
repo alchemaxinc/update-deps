@@ -28,13 +28,14 @@ jobs:
 
 ## :gear: Inputs
 
-| Input            | Description                      | Required           | Default                      |
-| ---------------- | -------------------------------- | ------------------ | ---------------------------- |
-| `base-branch`    | Base branch for the pull request | :white_check_mark: | `main`                       |
-| `token`          | GitHub token for authentication  | :x:                | `${{ github.token }}`        |
-| `branch-prefix`  | Prefix for the update branch     | :x:                | `update-dependencies`        |
-| `pr-title`       | Title for the pull request       | :x:                | `Update Golang Dependencies` |
-| `commit-message` | Commit message for the update    | :x:                | `Update Golang dependencies` |
+| Input            | Description                                         | Required           | Default                      |
+| ---------------- | --------------------------------------------------- | ------------------ | ---------------------------- |
+| `base-branch`    | Base branch for the pull request                    | :white_check_mark: | `main`                       |
+| `token`          | GitHub token for authentication                     | :x:                | `${{ github.token }}`        |
+| `branch-prefix`  | Prefix for the update branch                        | :x:                | `update-dependencies`        |
+| `pr-title`       | Title for the pull request                          | :x:                | `Update Golang Dependencies` |
+| `commit-message` | Commit message for the update                       | :x:                | `Update Golang dependencies` |
+| `auto-merge`     | Wether automatic merge should be enabled for the PR | :x:                | `false`                      |
 
 ## :warning: Prerequisites
 

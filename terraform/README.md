@@ -47,6 +47,7 @@ jobs:
 | `working-dir`    | Working directory for Terraform                                   | :white_check_mark: | -                               |
 | `var-file-path`  | Path to Terraform variables file                                  | :white_check_mark: | -                               |
 | `backend-config` | Backend configuration value for `terraform init -backend-config=` | :x:                | -                               |
+| `auto-merge`     | Wether automatic merge should be enabled for the PR               | :x:                | `false`                         |
 
 ## :gear: How It Works
 
