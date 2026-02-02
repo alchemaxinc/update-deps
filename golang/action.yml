@@ -33,6 +33,11 @@ inputs:
     description: 'Whether a successful PR should be automatically merged'
     default: 'false'
 
+  strategy:
+    required: false
+    description: 'Strategy for updating dependencies (controlled, direct, or everything)'
+    default: 'controlled'
+
 runs:
   using: 'composite'
   steps:
@@ -48,10 +53,28 @@ runs:
         cache: true
         cache-dependency-path: '**/go.sum'
 
-    - name: Update dependencies
+    - name: Update dependencies (controlled)
+      if: ${{ inputs.strategy == 'controlled' }}
       shell: bash
       run: |
         go get -t -u ./...
+        go mod tidy
+
+    - name: Update dependencies (direct)
+      if: ${{ inputs.strategy == 'direct' }}
+      shell: bash
+      run: |
+        go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all \
+          | xargs -n1 go get -u
+        go mod tidy
+
+    - name: Update dependencies (everything)
+      if: ${{ inputs.strategy == 'everything' }}
+      shell: bash
+      run: |
+        go list -m -u all \
+        | awk '$NF ~ /^\[v/ { v=$NF; gsub(/[\[\]]/, "", v); print $1 "@" v }'
+        | xargs -n1 go get
         go mod tidy
 
     - name: Check for changes
@@ -75,6 +98,14 @@ runs:
           # :arrows_counterclockwise: Go Module Dependencies Update
 
           This pull request automatically updates Go module dependencies to their latest versions.
+
+          ## :gear: Update Strategy
+
+          **Strategy Used:** `${{ inputs.strategy }}`
+
+          - **controlled**: Updates direct dependencies and their transitive dependencies while maintaining version constraints
+          - **direct**: Updates only direct dependencies to their latest versions
+          - **everything**: Updates all dependencies including indirect ones to their latest versions
 
           ## :warning: Important Notes
 
