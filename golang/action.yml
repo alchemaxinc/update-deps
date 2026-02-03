@@ -73,8 +73,8 @@ runs:
       shell: bash
       run: |
         go list -m -u all \
-        | awk '$NF ~ /^\[v/ { v=$NF; gsub(/[\[\]]/, "", v); print $1 "@" v }'
-        | xargs -n1 go get
+          | awk '$NF ~ /^\[v/ { v=$NF; gsub(/[\[\]]/, "", v); print $1 "@" v }' \
+          | xargs -n1 go get
         go mod tidy
 
     - name: Check for changes
