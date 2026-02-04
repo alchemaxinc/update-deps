@@ -9,3 +9,5 @@ A collection of convenient GitHub Actions for automatically updating your softwa
 - :package: **[NPM Dependencies](./npm/README.md)** - Updates NPM package dependencies using npm-check-updates
 - :gear: **[Go Dependencies](./golang/README.md)** - Updates Go module dependencies
 - :arrows_counterclockwise: **[CircleCI Orbs](./circleci-orbs/README.md)** - Updates CircleCI orbs to their latest versions
+- :globe_with_meridians: **[Terraform Dependencies](./terraform/README.md)** - Updates Terraform provider dependencies
+- :octocat: **[GitHub Actions](./actions/README.md)** - Updates GitHub Actions in workflow files to their latest versions
