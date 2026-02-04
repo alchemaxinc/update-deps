@@ -8,16 +8,22 @@ jobs:
   update-actions:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Create temporary GitHub App Token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
+          private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
 
       - name: Update GitHub Actions
         uses: ./actions
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
           branch-prefix: 'update-actions'
           pr-title: 'Update GitHub Actions'
           commit-message: 'Update GitHub Actions'
           file-glob: '.github/**/*.yml'
           prefixes: 'actions'
+          auto-merge: 'true'
