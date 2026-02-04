@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from io import StringIO
 from pathlib import Path
 
 from ruamel.yaml import YAML
@@ -84,36 +83,60 @@ def collect_workflow_files(root: Path, file_glob: str) -> list[Path]:
 
 def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
     """
-    Apply updates to a YAML workflow file using ruamel.yaml.
-    This preserves formatting and comments.
+    Apply updates to a YAML workflow file by doing targeted text replacements.
+    This preserves all original formatting and comments, only modifying the 'uses:' lines.
     """
-    yaml = YAML()
-    yaml.preserve_quotes = True
-    yaml.default_flow_style = False
-    yaml.map_indent = 2
-    yaml.sequence_indent = 4
-    yaml.sequence_dash_offset = 2
+    lines = text.split("\n")
 
-    try:
-        docs = list(yaml.load_all(text))
-    except Exception:
-        # If parsing fails, return original text unchanged
-        return text
+    for i, line in enumerate(lines):
+        # Look for lines that contain 'uses:' with a value
+        # Handle both plain keys and list items with dashes
+        stripped = line.lstrip()
 
-    # Check if any updates are needed
-    any_updates = False
-    for doc in docs:
-        if doc is not None and update_uses_in_structure(doc, upgrades):
-            any_updates = True
+        # Check if line has 'uses:' (either "uses:" or "- uses:")
+        if "uses:" not in stripped:
+            continue
 
-    if not any_updates:
-        return text
+        # Find the position of 'uses:' in the line
+        uses_idx = stripped.find("uses:")
+        if uses_idx == -1:
+            continue
 
-    # Write back with preserved formatting
-    output = StringIO()
-    if len(docs) == 1:
-        yaml.dump(docs[0], output)
-    else:
-        yaml.dump_all(docs, output)
+        # Check if everything before 'uses:' is valid YAML (dash followed by spaces, or nothing)
+        prefix = stripped[:uses_idx].strip()
+        if prefix and prefix != "-":
+            continue
 
-    return output.getvalue()
+        # Extract the indentation from the original line
+        indent = line[: len(line) - len(stripped)]
+
+        # Get the part after 'uses:'
+        rest = stripped[uses_idx + 5 :].strip()  # Remove 'uses:' and leading whitespace
+
+        # Handle comments - extract value and any trailing comment
+        comment = ""
+        value_part = rest
+        if "#" in rest:
+            parts = rest.split("#", 1)
+            value_part = parts[0].strip()
+            comment = "#" + parts[1]
+
+        # Check if this value matches any upgrade
+        for (repo, current_tag), new_tag in upgrades.items():
+            old_value = f"{repo}@{current_tag}"
+            new_value = f"{repo}@{new_tag}"
+            if value_part == old_value:
+                # Reconstruct the line, preserving list item syntax if present
+                if stripped.startswith("- "):
+                    if comment:
+                        lines[i] = f"{indent}- uses: {new_value} {comment}"
+                    else:
+                        lines[i] = f"{indent}- uses: {new_value}"
+                else:
+                    if comment:
+                        lines[i] = f"{indent}uses: {new_value} {comment}"
+                    else:
+                        lines[i] = f"{indent}uses: {new_value}"
+                break
+
+    return "\n".join(lines)
