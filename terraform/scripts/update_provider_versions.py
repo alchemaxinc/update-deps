@@ -173,8 +173,8 @@ def main():
                 continue
 
             content = new_content
-            logging.info(
-                "Updated %s to %s in %s", name, new_version_constraint, tf_file
+            print(
+                f"::notice::Updated {name} from {provider_info['current']} to {new_version_constraint}"
             )
 
         if content != original_content:

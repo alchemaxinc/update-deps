@@ -55,7 +55,7 @@ def update_actions(
         latest_version = parse_version(latest_tag)
         if latest_version and latest_version > current_version:
             upgrades[(repo, current_tag)] = latest_tag
-            print(f"Update available: {repo}@{current_tag} -> {latest_tag}")
+            print(f"::notice::Updated {repo} from {current_tag} to {latest_tag}")
 
     if not upgrades:
         print("All matching actions are up to date.")

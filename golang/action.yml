@@ -63,25 +63,73 @@ runs:
       if: ${{ inputs.strategy == 'controlled' }}
       shell: bash
       run: |
+        # Capture current direct dependencies
+        before=$(go list -m -f '{{if not .Indirect}}{{.Path}}@{{.Version}}{{end}}' all | sort)
+
         go get -t -u ./...
         go mod tidy
+
+        # Compare with updated dependencies
+        after=$(go list -m -f '{{if not .Indirect}}{{.Path}}@{{.Version}}{{end}}' all | sort)
+
+        # Output notices for updated packages
+        while IFS= read -r line; do
+          pkg=$(echo "$line" | cut -d'@' -f1)
+          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          new_ver=$(echo "$line" | cut -d'@' -f2)
+          if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
+            echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          fi
+        done <<< "$after"
 
     - name: Update dependencies (direct)
       if: ${{ inputs.strategy == 'direct' }}
       shell: bash
       run: |
+        # Capture current direct dependencies
+        before=$(go list -m -f '{{if not .Indirect}}{{.Path}}@{{.Version}}{{end}}' all | sort)
+
         go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all \
           | xargs -n1 go get -u
         go mod tidy
+
+        # Compare with updated dependencies
+        after=$(go list -m -f '{{if not .Indirect}}{{.Path}}@{{.Version}}{{end}}' all | sort)
+
+        # Output notices for updated packages
+        while IFS= read -r line; do
+          pkg=$(echo "$line" | cut -d'@' -f1)
+          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          new_ver=$(echo "$line" | cut -d'@' -f2)
+          if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
+            echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          fi
+        done <<< "$after"
 
     - name: Update dependencies (everything)
       if: ${{ inputs.strategy == 'everything' }}
       shell: bash
       run: |
+        # Capture current all dependencies
+        before=$(go list -m -f '{{.Path}}@{{.Version}}' all | sort)
+
         go list -m -u all \
           | awk '$NF ~ /^\[v/ { v=$NF; gsub(/[\[\]]/, "", v); print $1 "@" v }' \
           | xargs -n1 go get
         go mod tidy
+
+        # Compare with updated dependencies
+        after=$(go list -m -f '{{.Path}}@{{.Version}}' all | sort)
+
+        # Output notices for updated packages
+        while IFS= read -r line; do
+          pkg=$(echo "$line" | cut -d'@' -f1)
+          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          new_ver=$(echo "$line" | cut -d'@' -f2)
+          if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
+            echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          fi
+        done <<< "$after"
 
     - name: Check for changes
       id: check_changes

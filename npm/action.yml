@@ -83,11 +83,26 @@ runs:
       shell: bash
       run: |
         export PATH=~/.npm-global/bin:$PATH
+
+        # Capture updates from ncu (it outputs lines like "package  1.0.0  →  2.0.0")
         if [ -n "${{ inputs.excluded-packages }}" ]; then
+          ncu_output=$(ncu --reject "${{ inputs.excluded-packages }}" 2>/dev/null || true)
           ncu -u --reject "${{ inputs.excluded-packages }}"
         else
+          ncu_output=$(ncu 2>/dev/null || true)
           ncu -u
         fi
+
+        # Parse ncu output and emit notices for each updated package
+        echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' | while read -r line; do
+          pkg=$(echo "$line" | awk '{print $1}')
+          old_ver=$(echo "$line" | awk '{print $2}')
+          new_ver=$(echo "$line" | awk '{print $4}')
+          if [ -n "$pkg" ] && [ -n "$old_ver" ] && [ -n "$new_ver" ]; then
+            echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          fi
+        done
+
         if [ "${{ inputs.relock }}" = "true" ]; then
           rm -f package-lock.json
         fi
