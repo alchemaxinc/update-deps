@@ -37,7 +37,7 @@ python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --prefixes 'ac
 ## :gear: Inputs
 
 | Input            | Description                                         | Required           | Default                 |
-|------------------|-----------------------------------------------------|--------------------|-------------------------|
+| ---------------- | --------------------------------------------------- | ------------------ | ----------------------- |
 | `base-branch`    | Base branch for the pull request                    | :white_check_mark: | `main`                  |
 | `token`          | GitHub token for authentication                     | :x:                | `${{ github.token }}`   |
 | `branch-prefix`  | Prefix for the update branch                        | :x:                | `update-actions`        |
@@ -52,9 +52,3 @@ python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --prefixes 'ac
 - Workflow files must be under `.github` and match the configured `file-glob`
 - The action requires write permissions to create branches and pull requests
 - GitHub CLI must be available in the runner environment
-
-## :test_tube: Tests
-
-```bash
-python -m unittest discover -s tests
-```

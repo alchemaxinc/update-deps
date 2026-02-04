@@ -14,11 +14,11 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: "3.14"
-  CSPELL_VERSION: "8.0.0"
-  BLACK_VERSION: "24.10.0"
-  PRETTIER_VERSION: "3.3.3"
-  COMMITLINT_CLI_VERSION: "20.2.0"
+  PYTHON_VERSION: '3.14'
+  CSPELL_VERSION: '8.0.0'
+  BLACK_VERSION: '24.10.0'
+  PRETTIER_VERSION: '3.3.3'
+  COMMITLINT_CLI_VERSION: '20.2.0'
 
 jobs:
   install-commitlint:
@@ -84,33 +84,25 @@ jobs:
       - name: Run Prettier check
         run: ./node_modules/.bin/prettier --check .
 
-  install-black:
-    runs-on: ubuntu-latest
-    steps:
-      - *checkout-code
-
-      - &create-black-lockfile
-        name: Create Black lockfile
-        run: echo "black==${{ env.BLACK_VERSION }}" > black-requirements.txt
-
-      - &setup-black
-        name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          cache: "pip"
-          python-version: "${{ env.PYTHON_VERSION }}"
-          cache-dependency-path: black-requirements.txt
-
-      - name: Install Black
-        run: pip install -r black-requirements.txt
-
   run-black:
     runs-on: ubuntu-latest
-    needs: install-black
     steps:
       - *checkout-code
-      - *create-black-lockfile
-      - *setup-black
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '${{ env.PYTHON_VERSION }}'
+
+      - name: Cache Black
+        uses: actions/cache@v4
+        id: cache-black
+        with:
+          path: ~/.cache/pip
+          key: v1-black-${{ env.BLACK_VERSION }}
+
+      - name: Install Black
+        run: pip install black==${{ env.BLACK_VERSION }}
 
       - name: Run Black check
         run: black --check .

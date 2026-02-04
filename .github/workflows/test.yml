@@ -1,0 +1,120 @@
+name: Test Actions
+
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_call:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.14'
+
+jobs:
+  python-unit-tests-actions:
+    name: Python Unit Tests (GitHub Actions)
+    runs-on: ubuntu-latest
+    steps:
+      - &checkout-code
+        name: Checkout code
+        uses: actions/checkout@v5
+
+      - &setup-python
+        name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        working-directory: actions
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run unit tests
+        working-directory: actions
+        run: python -m unittest discover -s . -p "test_*.py" -v
+
+  python-unit-tests-terraform:
+    name: Python Unit Tests (Terraform)
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+      - *setup-python
+
+      - name: Run unit tests
+        working-directory: terraform
+        run: python -m unittest discover -s . -p "test_*.py" -v
+
+  test-actions:
+    name: Test GitHub Actions Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Test actions updater
+        uses: ./actions
+        with:
+          dry-run: 'true'
+          file-glob: 'actions/test/.github/**/*.yml'
+
+  test-circleci-orbs:
+    name: Test CircleCI Orbs Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Test CircleCI orbs updater
+        uses: ./circleci-orbs
+        with:
+          dry-run: 'true'
+          circleci-config-file: 'circleci-orbs/test/.circleci/config.yml'
+
+  test-golang:
+    name: Test Go Dependencies Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup test fixtures
+        run: |
+          cp golang/test/go.mod .
+          cp golang/test/go.sum .
+
+      - name: Test Go dependencies updater
+        uses: ./golang
+        with:
+          dry-run: 'true'
+
+  test-npm:
+    name: Test NPM Dependencies Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup test fixtures
+        run: |
+          cp npm/test/package.json .
+          cp npm/test/package-lock.json .
+          cp npm/test/.nvmrc .
+
+      - name: Test NPM dependencies updater
+        uses: ./npm
+        with:
+          dry-run: 'true'
+
+  test-terraform:
+    name: Test Terraform Dependencies Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Test Terraform dependencies updater
+        uses: ./terraform
+        with:
+          dry-run: 'true'
+          working-dir: 'terraform/test'
+          var-file-path: 'test.tfvars'

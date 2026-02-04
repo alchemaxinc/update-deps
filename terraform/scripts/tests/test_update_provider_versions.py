@@ -43,7 +43,7 @@ class TestUpdateProviderVersions(unittest.TestCase):
             mock_result = mock.Mock(returncode=0, stdout='{"version": "5.2.1"}')
             with mock.patch.object(module.subprocess, "run", return_value=mock_result):
                 with mock.patch.object(
-                        sys, "argv", ["script", str(workdir), str(versions_path)]
+                    sys, "argv", ["script", str(workdir), str(versions_path)]
                 ):
                     module.main()
 

@@ -33,7 +33,9 @@ def main():
 
     # Check that versions_file exists
     if not os.path.isfile(versions_file):
-        logging.error("Versions file '%s' does not exist or is not a file.", versions_file)
+        logging.error(
+            "Versions file '%s' does not exist or is not a file.", versions_file
+        )
         sys.exit(1)
 
     # Read current versions
@@ -162,14 +164,18 @@ def main():
             )
 
             replacement = f"\\g<1>{new_version_constraint}\\g<2>"
-            new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE | re.DOTALL)
+            new_content = re.sub(
+                pattern, replacement, content, flags=re.MULTILINE | re.DOTALL
+            )
 
             if new_content == content:
                 logging.debug("No match found for %s in %s", name, tf_file)
                 continue
 
             content = new_content
-            logging.info("Updated %s to %s in %s", name, new_version_constraint, tf_file)
+            logging.info(
+                "Updated %s to %s in %s", name, new_version_constraint, tf_file
+            )
 
         if content != original_content:
             with open(tf_file, "w", encoding="utf-8") as wf:
