@@ -1,0 +1,23 @@
+name: Update GitHub Actions
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0' # Run every Sunday at midnight
+
+jobs:
+  update-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update GitHub Actions
+        uses: ./actions
+        with:
+          token: ${{ github.token }}
+          base-branch: 'main'
+          branch-prefix: 'update-actions'
+          pr-title: 'Update GitHub Actions'
+          commit-message: 'Update GitHub Actions'
+          file-glob: '.github/**/*.yml'
+          prefixes: 'actions'
