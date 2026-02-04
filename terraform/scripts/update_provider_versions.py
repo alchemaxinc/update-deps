@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 import json
-import subprocess
-import re
-import os
-import sys
 import logging
+import os
+import re
+import subprocess
+import sys
 
 
 def main():
     # Configure logging
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(levelname)s: %(message)s',
-        stream=sys.stderr
+        format="%(levelname)s: %(message)s",
+        stream=sys.stderr,
     )
 
     working_dir = sys.argv[1] if len(sys.argv) > 1 else "."
@@ -20,7 +20,10 @@ def main():
 
     # Check that working_dir exists and is a directory
     if not os.path.isdir(working_dir):
-        logging.error(f"Working directory '{working_dir}' does not exist or is not a directory.")
+        logging.error(
+            "Working directory '%s' does not exist or is not a directory.",
+            working_dir,
+        )
         sys.exit(1)
 
     # Check that versions_file is provided
@@ -30,18 +33,18 @@ def main():
 
     # Check that versions_file exists
     if not os.path.isfile(versions_file):
-        logging.error(f"Versions file '{versions_file}' does not exist or is not a file.")
+        logging.error("Versions file '%s' does not exist or is not a file.", versions_file)
         sys.exit(1)
 
     # Read current versions
     try:
-        with open(versions_file, "r") as f:
+        with open(versions_file, "r", encoding="utf-8") as f:
             current_data = json.load(f)
     except json.JSONDecodeError as e:
-        logging.error(f"Versions file '{versions_file}' is not valid JSON: {e}")
+        logging.error("Versions file '%s' is not valid JSON: %s", versions_file, e)
         sys.exit(1)
-    except Exception as e:
-        logging.error(f"Error reading versions file '{versions_file}': {e}")
+    except Exception as e:  # pragma: no cover - defensive
+        logging.error("Error reading versions file '%s': %s", versions_file, e)
         sys.exit(1)
 
     # Extract providers from current versions
@@ -51,14 +54,14 @@ def main():
         sys.exit(1)
 
     for namespace, version in current_data["provider_selections"].items():
-        logging.debug(f"Processing provider '{namespace}/{version}'")
+        logging.debug("Processing provider '%s/%s'", namespace, version)
 
         registry, name = namespace.split("/", 1)
         providers[namespace] = {
             "registry": registry,
             "name": name,
             "current": version,
-            "latest": None
+            "latest": None,
         }
 
     # Get latest versions from Terraform registry
@@ -69,28 +72,36 @@ def main():
             name = provider_info["name"]
             url = f"https://{registry}/v1/providers/{name}"
 
-            logging.debug(f"Fetching version info from {url}")
+            logging.debug("Fetching version info from %s", url)
 
             result = subprocess.run(
                 ["curl", "-s", url],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode != 0:
-                logging.warning(f"Failed to fetch {namespace}: curl returned {result.returncode}")
+                logging.warning(
+                    "Failed to fetch %s: curl returned %s",
+                    namespace,
+                    result.returncode,
+                )
                 continue
 
             data = json.loads(result.stdout)
             if "version" not in data:
-                logging.warning(f"No version field found for {namespace}")
+                logging.warning("No version field found for %s", namespace)
                 continue
 
             provider_info["latest"] = data["version"]
             logging.info(
-                f"{namespace}: current={provider_info['current']}, latest={provider_info['latest']}")
-        except Exception as e:
-            logging.error(f"Error fetching {namespace}: {e}")
+                "%s: current=%s, latest=%s",
+                namespace,
+                provider_info["current"],
+                provider_info["latest"],
+            )
+        except Exception as e:  # pragma: no cover - defensive
+            logging.error("Error fetching %s: %s", namespace, e)
 
     # Update .tf files with new versions
     tf_files = []
@@ -99,17 +110,17 @@ def main():
             if file.endswith(".tf"):
                 tf_files.append(os.path.join(root, file))
 
-    logging.info(f"Found {len(tf_files)} .tf files")
+    logging.info("Found %d .tf files", len(tf_files))
 
     for tf_file in tf_files:
         # Initialize content to satisfy static analyzers in all code paths
         content = ""
-        with open(tf_file, "r") as rf:
+        with open(tf_file, "r", encoding="utf-8") as rf:
             content = rf.read()
 
         # Skip files that don't have required_providers block
         if "required_providers" not in content:
-            logging.debug(f"Skipping {tf_file} - no required_providers block found")
+            logging.debug("Skipping %s - no required_providers block found", tf_file)
             continue
 
         original_content = content
@@ -123,12 +134,16 @@ def main():
 
             # Extract major.minor version from latest version (ignore patch)
             latest_version = provider_info["latest"]
-            version_parts = latest_version.split('.')
+            version_parts = latest_version.split(".")
             if len(version_parts) >= 2:
                 new_version_constraint = f"~> {version_parts[0]}.{version_parts[1]}"
             else:
                 # Fallback if version format is unexpected
-                logging.warning(f"Unexpected version format for {namespace}: {latest_version}")
+                logging.warning(
+                    "Unexpected version format for %s: %s",
+                    namespace,
+                    latest_version,
+                )
                 new_version_constraint = f"~> {version_parts[0]}.0"
 
             # The source in .tf files looks like "hashicorp/aws" (namespace/name)
@@ -137,27 +152,27 @@ def main():
             name = provider_info["name"]
 
             # Pattern matches: source = "hashicorp/aws" followed by version = "..."
-            # We need to find the provider block and update its version
-            # Match the provider with its source, then update the version line within that block
+            # We need to find the provider block and update its version line within that block
             pattern = (
-                    rf'(\b\w+\s*=\s*\{{\s*'  # provider_name = {
-                    rf'[^}}]*source\s*=\s*["\']' + re.escape(name) + r'["\']'  # source = "registry/name"
-                                                                     rf'[^}}]*version\s*=\s*["\'])[^"\']+(["\'])'
-                # version = "..."
+                rf"(\b\w+\s*=\s*\{{\s*"  # provider_name = {
+                rf"[^}}]*source\s*=\s*[\"\']"
+                + re.escape(name)
+                + r"[\"\']"  # source = "registry/name"
+                rf"[^}}]*version\s*=\s*[\"\'])[^\"\']+([\"\'])"
             )
 
-            replacement = f'\\g<1>{new_version_constraint}\\g<2>'
+            replacement = f"\\g<1>{new_version_constraint}\\g<2>"
             new_content = re.sub(pattern, replacement, content, flags=re.MULTILINE | re.DOTALL)
 
             if new_content == content:
-                logging.debug(f"No match found for {name} in {tf_file}")
+                logging.debug("No match found for %s in %s", name, tf_file)
                 continue
 
             content = new_content
-            logging.info(f"Updated {name} to {new_version_constraint} in {tf_file}")
+            logging.info("Updated %s to %s in %s", name, new_version_constraint, tf_file)
 
         if content != original_content:
-            with open(tf_file, "w") as wf:
+            with open(tf_file, "w", encoding="utf-8") as wf:
                 wf.write(content)
 
     logging.info("Provider updates complete")
