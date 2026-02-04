@@ -52,6 +52,86 @@ class TestScanner(unittest.TestCase):
             files = scanner.collect_workflow_files(root, ".github/**/*.yml")
             self.assertEqual(files, [target])
 
+    def test_apply_updates_preserves_non_uses_variables(self):
+        """
+        Regression test: Ensure that non-'uses' variables and multi-line env vars
+        are not modified when updating action versions.
+
+        This tests the issue where LOCAL_VERSION and LATEST_VERSION environment
+        variables were being incorrectly split across multiple lines.
+        """
+        text = """name: Automatic Version Synchronization
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+env:
+  PYTHON_VERSION: "3.14"
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    env:
+      LOCAL_VERSION: ${{ needs.get-current-local-version.outputs.local_version }}
+      LATEST_VERSION: ${{ needs.get-newest-version.outputs.latest_version }}
+    needs:
+      - get-newest-version
+      - get-current-local-version
+
+    steps:
+      - name: Create temporary GitHub App Token
+        id: app
+        uses: actions/create-github-app-token@v1
+        with:
+          owner: ${{ github.repository_owner }}
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          cache: "pip"
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Print and verify versions
+        id: print-versions
+        run: |
+          echo "Local version: $LOCAL_VERSION"
+          echo "Latest version: $LATEST_VERSION"
+"""
+
+        # Upgrade specific actions to new versions
+        upgrades = {
+            ("actions/create-github-app-token", "v1"): "v2.2.1",
+            ("actions/setup-python", "v5"): "v6.2.0",
+        }
+
+        updated = scanner.apply_updates(text, upgrades)
+
+        # Verify that the uses entries were updated
+        self.assertIn("actions/create-github-app-token@v2.2.1", updated)
+        self.assertIn("actions/setup-python@v6.2.0", updated)
+
+        # Verify that non-uses variables are preserved exactly as-is
+        self.assertIn('PYTHON_VERSION: "3.14"', updated)
+        self.assertIn(
+            "LOCAL_VERSION: ${{ needs.get-current-local-version.outputs.local_version }}",
+            updated,
+        )
+        self.assertIn(
+            "LATEST_VERSION: ${{ needs.get-newest-version.outputs.latest_version }}",
+            updated,
+        )
+
+        # Verify that the run command is not split across lines
+        self.assertIn('run: |\n          echo "Local version: $LOCAL_VERSION"', updated)
+        self.assertIn('echo "Latest version: $LATEST_VERSION"', updated)
+
+        # Verify that other comments and structure are preserved
+        self.assertIn('cron: "0 0 * * *"', updated)
+
 
 if __name__ == "__main__":
     unittest.main()
