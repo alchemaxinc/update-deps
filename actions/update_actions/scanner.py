@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Literal
 
 from ruamel.yaml import YAML
 
@@ -22,30 +23,56 @@ def find_uses(obj) -> list[str]:
     return found
 
 
+def get_granularity(version: str) -> Literal["major", "minor", "patch"]:
+    parts = version.split(".")
+    if len(parts) == 1:
+        return "major"
+
+    if len(parts) == 2:
+        return "minor"
+
+    if len(parts) >= 3:
+        return "patch"
+
+    return "patch"
+
+
 def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
     """
     Recursively update 'uses' values in a YAML structure.
     Returns True if any updates were made.
     """
+    if not isinstance(obj, (dict, list)):
+        return False
+
     updated = False
-    if isinstance(obj, dict):
-        if isinstance(obj.get("steps"), list):
-            for step in obj["steps"]:
-                if isinstance(step, dict) and isinstance(step.get("uses"), str):
-                    use = step["uses"]
-                    if "@" in use:
-                        repo, tag = use.split("@", 1)
-                        new_tag = upgrades.get((repo, tag))
-                        if new_tag:
-                            step["uses"] = f"{repo}@{new_tag}"
-                            updated = True
-        for value in obj.values():
-            if update_uses_in_structure(value, upgrades):
-                updated = True
-    elif isinstance(obj, list):
+
+    if isinstance(obj, list):
         for item in obj:
             if update_uses_in_structure(item, upgrades):
                 updated = True
+        return updated
+
+    # obj is a dict
+    if isinstance(obj.get("steps"), list):
+        for step in obj["steps"]:
+            if not isinstance(step, dict) or not isinstance(step.get("uses"), str):
+                continue
+
+            use = step["uses"]
+            if "@" not in use:
+                continue
+
+            repo, tag = use.split("@", 1)
+            new_tag = upgrades.get((repo, tag))
+            if new_tag:
+                step["uses"] = f"{repo}@{new_tag}"
+                updated = True
+
+    for value in obj.values():
+        if update_uses_in_structure(value, upgrades):
+            updated = True
+
     return updated
 
 
@@ -89,31 +116,27 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
     lines = text.split("\n")
 
     for i, line in enumerate(lines):
-        # Look for lines that contain 'uses:' with a value
-        # Handle both plain keys and list items with dashes
         stripped = line.lstrip()
 
-        # Check if line has 'uses:' (either "uses:" or "- uses:")
+        # Guard: Skip if no 'uses:' found
         if "uses:" not in stripped:
             continue
 
-        # Find the position of 'uses:' in the line
+        # Guard: Find position of 'uses:'
         uses_idx = stripped.find("uses:")
         if uses_idx == -1:
             continue
 
-        # Check if everything before 'uses:' is valid YAML (dash followed by spaces, or nothing)
+        # Guard: Validate prefix is either empty or a dash
         prefix = stripped[:uses_idx].strip()
         if prefix and prefix != "-":
             continue
 
-        # Extract the indentation from the original line
+        # Extract indentation and value parts
         indent = line[: len(line) - len(stripped)]
+        rest = stripped[uses_idx + 5 :].strip()
 
-        # Get the part after 'uses:'
-        rest = stripped[uses_idx + 5 :].strip()  # Remove 'uses:' and leading whitespace
-
-        # Handle comments - extract value and any trailing comment
+        # Parse value and comment
         comment = ""
         value_part = rest
         if "#" in rest:
@@ -124,19 +147,24 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
         # Check if this value matches any upgrade
         for (repo, current_tag), new_tag in upgrades.items():
             old_value = f"{repo}@{current_tag}"
-            new_value = f"{repo}@{new_tag}"
-            if value_part == old_value:
-                # Reconstruct the line, preserving list item syntax if present
-                if stripped.startswith("- "):
-                    if comment:
-                        lines[i] = f"{indent}- uses: {new_value} {comment}"
-                    else:
-                        lines[i] = f"{indent}- uses: {new_value}"
-                else:
-                    if comment:
-                        lines[i] = f"{indent}uses: {new_value} {comment}"
-                    else:
-                        lines[i] = f"{indent}uses: {new_value}"
-                break
+            if value_part != old_value:
+                continue
+
+            # Granularize new_tag to match current_tag's granularity
+            granularity = get_granularity(current_tag)
+            if granularity == "major":
+                new_tag_granuralized = new_tag.split(".")[0]
+            elif granularity == "minor":
+                new_tag_granuralized = ".".join(new_tag.split(".")[:2])
+            else:
+                new_tag_granuralized = ".".join(new_tag.split(".")[:3])
+
+            new_value = f"{repo}@{new_tag_granuralized}"
+
+            # Reconstruct line with proper formatting
+            prefix_str = "- " if stripped.startswith("- ") else ""
+            comment_str = f" {comment}" if comment else ""
+            lines[i] = f"{indent}{prefix_str}uses: {new_value}{comment_str}"
+            break
 
     return "\n".join(lines)

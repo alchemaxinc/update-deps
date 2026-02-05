@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from update_actions.github_api import fetch_release_tags
 from update_actions.scanner import (
