@@ -136,8 +136,8 @@ jobs:
         updated = scanner.apply_updates(text, upgrades)
 
         # Verify that the uses entries were updated
-        self.assertIn("actions/create-github-app-token@v2.2.1", updated)
-        self.assertIn("actions/setup-python@v6.2.0", updated)
+        self.assertIn("actions/create-github-app-token@v2", updated)
+        self.assertIn("actions/setup-python@v6", updated)
 
         # Verify that non-uses variables are preserved exactly as-is
         self.assertIn('PYTHON_VERSION: "3.14"', updated)

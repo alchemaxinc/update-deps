@@ -10,16 +10,29 @@ from ruamel.yaml import YAML
 def find_uses(obj) -> list[str]:
     """Recursively find all 'uses' values in a YAML structure."""
     found = []
-    if isinstance(obj, dict):
-        if isinstance(obj.get("steps"), list):
-            for step in obj["steps"]:
-                if isinstance(step, dict) and isinstance(step.get("uses"), str):
-                    found.append(step["uses"])
-        for value in obj.values():
-            found.extend(find_uses(value))
-    elif isinstance(obj, list):
+
+    # Guard: Handle lists
+    if isinstance(obj, list):
         for item in obj:
             found.extend(find_uses(item))
+        return found
+
+    # Guard: Only process dicts from here
+    if not isinstance(obj, dict):
+        return found
+
+    # Process steps if present
+    if isinstance(obj.get("steps"), list):
+        for step in obj["steps"]:
+            if not isinstance(step, dict):
+                continue
+            if isinstance(step.get("uses"), str):
+                found.append(step["uses"])
+
+    # Recurse into all dict values
+    for value in obj.values():
+        found.extend(find_uses(value))
+
     return found
 
 
