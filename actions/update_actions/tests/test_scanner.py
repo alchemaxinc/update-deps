@@ -6,6 +6,31 @@ from update_actions import scanner
 
 
 class TestScanner(unittest.TestCase):
+    def test_get_granularity(self):
+        """Test granularity detection for various version formats."""
+        test_cases = [
+            # (version, expected_granularity)
+            ("1", "major"),
+            ("2", "major"),
+            ("v1", "major"),
+            ("v10", "major"),
+            ("1.2", "minor"),
+            ("2.5", "minor"),
+            ("v1.2", "minor"),
+            ("v3.14", "minor"),
+            ("1.2.3", "patch"),
+            ("2.5.8", "patch"),
+            ("v1.2.3", "patch"),
+            ("v3.14.159", "patch"),
+            ("1.2.3.4", "patch"),  # More than 3 parts
+            ("v1.2.3.4", "patch"),
+        ]
+
+        for version, expected in test_cases:
+            with self.subTest(version=version):
+                result = scanner.get_granularity(version)
+                self.assertEqual(result, expected)
+
     def test_find_uses_nested(self):
         data = {
             "jobs": {

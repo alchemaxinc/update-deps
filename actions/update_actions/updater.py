@@ -47,15 +47,19 @@ def update_actions(
         if current_version is None:
             print(f"Skipping {use} (unsupported tag format)")
             continue
+
         tags = fetch_release_tags(repo)
         latest_tag = select_latest_tag(tags)
         if latest_tag is None:
             print(f"Skipping {use} (no valid release tags found)")
             continue
+
         latest_version = parse_version(latest_tag)
         if latest_version and latest_version > current_version:
-            upgrades[(repo, current_tag)] = latest_tag
-            print(f"::notice::Updated {repo} from {current_tag} to {latest_tag}")
+            upgrade_key = (repo, current_tag)
+            if upgrade_key not in upgrades:
+                upgrades[upgrade_key] = latest_tag
+                print(f"::notice::Updated {repo} from {current_tag} to {latest_tag}")
 
     if not upgrades:
         print("All matching actions are up to date.")
@@ -64,14 +68,18 @@ def update_actions(
     changes = 0
     for path, text in file_cache.items():
         updated = apply_updates(text, upgrades)
+
         if updated != text:
             changes += 1
+
             if dry_run:
                 print(f"Planned update in {path}")
-            else:
-                path.write_text(updated, encoding="utf-8")
-                print(f"Updated {path}")
+                continue
+
+            path.write_text(updated, encoding="utf-8")
+            print(f"Updated {path}")
 
     if dry_run:
         print(f"Dry run complete. Files with updates: {changes}")
+
     return 0
