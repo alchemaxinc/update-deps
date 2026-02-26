@@ -16,6 +16,9 @@ jobs:
           private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Update GitHub Actions
         uses: ./actions
         with:
