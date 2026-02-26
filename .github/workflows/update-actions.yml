@@ -25,8 +25,8 @@ jobs:
           token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
           branch-prefix: 'update-actions'
-          pr-title: 'Update GitHub Actions'
-          commit-message: 'Update GitHub Actions'
+          pr-title: 'chore: Update GitHub Actions'
+          commit-message: 'chore: update gitHub actions'
           file-glob: '.github/**/*.yml'
           prefixes: 'actions'
           auto-merge: 'true'
