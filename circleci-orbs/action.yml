@@ -111,7 +111,6 @@ runs:
           if [ "$current_version" != "$latest_tag" ]; then
             sed -i "s|\($orb_full_name@\)[^\"' ]*|\1$latest_tag|" "$CONFIG_FILE"
             echo "::notice::Updated $orb from $current_version to $latest_tag"
-            exit 0
           fi
 
           echo "::debug::$orb is already at latest version $latest_tag"

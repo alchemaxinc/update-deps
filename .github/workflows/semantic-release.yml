@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Get current year and month month for caching
+      - name: Get current year and month for caching
         id: date
         run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
 
