@@ -10,14 +10,14 @@ jobs:
     steps:
       - name: Create temporary GitHub App Token
         id: app
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
           private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Update GitHub Actions
         uses: ./actions
