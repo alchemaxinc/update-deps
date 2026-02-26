@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -33,7 +33,7 @@ jobs:
 
       - name: Cache semantic-release tools
         id: cache-semantic-release
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.npm-semantic-release
           key: npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
@@ -74,7 +74,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
