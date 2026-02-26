@@ -29,8 +29,10 @@ def find_uses(obj) -> list[str]:
             if isinstance(step.get("uses"), str):
                 found.append(step["uses"])
 
-    # Recurse into all dict values
-    for value in obj.values():
+    # Recurse into all dict values, skipping "steps" (already processed above)
+    for key, value in obj.items():
+        if key == "steps":
+            continue
         found.extend(find_uses(value))
 
     return found
@@ -43,9 +45,6 @@ def get_granularity(version: str) -> Literal["major", "minor", "patch"]:
 
     if len(parts) == 2:
         return "minor"
-
-    if len(parts) >= 3:
-        return "patch"
 
     return "patch"
 
@@ -82,7 +81,9 @@ def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
                 step["uses"] = f"{repo}@{new_tag}"
                 updated = True
 
-    for value in obj.values():
+    for key, value in obj.items():
+        if key == "steps":
+            continue
         if update_uses_in_structure(value, upgrades):
             updated = True
 
@@ -166,13 +167,13 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
             # Granularize new_tag to match current_tag's granularity
             granularity = get_granularity(current_tag)
             if granularity == "major":
-                new_tag_granuralized = new_tag.split(".")[0]
+                new_tag_granularized = new_tag.split(".")[0]
             elif granularity == "minor":
-                new_tag_granuralized = ".".join(new_tag.split(".")[:2])
+                new_tag_granularized = ".".join(new_tag.split(".")[:2])
             else:
-                new_tag_granuralized = ".".join(new_tag.split(".")[:3])
+                new_tag_granularized = ".".join(new_tag.split(".")[:3])
 
-            new_value = f"{repo}@{new_tag_granuralized}"
+            new_value = f"{repo}@{new_tag_granularized}"
 
             # Reconstruct line with proper formatting
             prefix_str = "- " if stripped.startswith("- ") else ""
