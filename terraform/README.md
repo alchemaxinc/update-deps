@@ -1,4 +1,3 @@
-````markdown
 # Update Terraform Dependencies :package:
 
 This GitHub Action automatically updates Terraform provider dependencies and creates a pull request with the changes.
@@ -81,4 +80,3 @@ This action performs the following steps:
 - Use `working-dir` to specify the subdirectory containing your Terraform configuration
 - The action uses conservative version constraints (`~> X.Y.Z`) when updating providers
 - The action automatically validates and formats your Terraform code before creating the PR
-````
