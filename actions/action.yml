@@ -33,6 +33,11 @@ inputs:
     description: 'Glob for workflow files (relative to repo root)'
     default: '.github/**/*.yml'
 
+  check-files:
+    required: false
+    description: 'Path/glob used to detect and include changed files in the PR'
+    default: '.github'
+
   prefixes:
     required: false
     description: 'Comma-separated list of action prefixes to include'
@@ -84,7 +89,7 @@ runs:
       if: inputs.dry-run != 'true'
       uses: alchemaxinc/composite-toolbox/check-changes@v1
       with:
-        files: '.github'
+        files: ${{ inputs.check-files }}
 
     - name: Create Pull Request
       id: open-pr
@@ -94,7 +99,7 @@ runs:
         token: ${{ inputs.token }}
         base-branch: ${{ inputs.base-branch }}
         branch-prefix: ${{ inputs.branch-prefix }}
-        files: '.github'
+        files: ${{ inputs.check-files }}
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
         pr-body: |
@@ -124,5 +129,4 @@ runs:
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}
-        merge-method: 'squash'
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}

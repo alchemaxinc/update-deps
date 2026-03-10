@@ -53,7 +53,7 @@ runs:
         token: ${{ inputs.token }}
 
     - name: Setup Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: 'go.mod'
         cache: true
@@ -184,5 +184,4 @@ runs:
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}
-        merge-method: 'squash'
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}

@@ -59,7 +59,7 @@ runs:
 
     - name: Cache yq binary
       id: cache-yq
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.local/bin/yq
         key: yq-${{ inputs.yq-version }}-linux-amd64
@@ -161,5 +161,4 @@ runs:
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}
-        merge-method: 'squash'
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}

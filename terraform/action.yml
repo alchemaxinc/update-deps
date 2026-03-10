@@ -60,7 +60,7 @@ runs:
         token: ${{ inputs.token }}
 
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@v4
 
     - name: Baseline initialization
       shell: bash
@@ -134,5 +134,4 @@ runs:
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}
-        merge-method: 'squash'
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}
