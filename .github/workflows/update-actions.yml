@@ -28,5 +28,5 @@ jobs:
           pr-title: 'chore: Update GitHub Actions'
           commit-message: 'chore: update gitHub actions'
           file-glob: '.github/**/*.yml'
-          prefixes: 'actions'
+          prefixes: 'actions,hashicorp'
           auto-merge: 'true'
