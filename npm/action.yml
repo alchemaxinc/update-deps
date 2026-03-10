@@ -79,32 +79,136 @@ runs:
         export PATH=~/.npm-global/bin:$PATH
         npm install -g npm-check-updates
 
-    - name: Update dependencies
+    - name: Check for available updates
+      id: check_updates
       shell: bash
       run: |
         export PATH=~/.npm-global/bin:$PATH
-
-        # Capture updates from ncu (it outputs lines like "package 1.0.0 → 2.0.0")
         ncu_output=$(ncu --reject "${{ inputs.excluded-packages }}" 2>/dev/null || true)
-        ncu -u -errorLevel 2 --reject "${{ inputs.excluded-packages }}"
-        ncu_exit_code=$?
+        update_lines=$(echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' || true)
 
-        # If ncu exits with code 0 (no updates available), stop here
-        if [ $ncu_exit_code -eq 0 ]; then
+        if [ -z "$update_lines" ]; then
           echo "::notice::No updates available, stopping"
+          echo "has_updates=false" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        # Parse ncu output and emit notices for each updated package
-        echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' | while read -r line; do
+        echo "has_updates=true" >> "$GITHUB_OUTPUT"
+        {
+          echo "update_lines<<ENDOFLINES"
+          echo "$update_lines"
+          echo "ENDOFLINES"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Apply updates to package.json
+      if: steps.check_updates.outputs.has_updates == 'true'
+      shell: bash
+      run: |
+        export PATH=~/.npm-global/bin:$PATH
+        ncu -u --reject "${{ inputs.excluded-packages }}"
+
+    - name: Categorize updates by semver change
+      id: categorize
+      if: steps.check_updates.outputs.has_updates == 'true'
+      shell: bash
+      env:
+        UPDATE_LINES: ${{ steps.check_updates.outputs.update_lines }}
+      run: |
+        major_updates=""
+        minor_updates=""
+        patch_updates=""
+
+        while IFS= read -r line; do
+          [ -z "$line" ] && continue
           pkg=$(echo "$line" | awk '{print $1}')
           old_ver=$(echo "$line" | awk '{print $2}')
           new_ver=$(echo "$line" | awk '{print $4}')
-          if [ -n "$pkg" ] && [ -n "$old_ver" ] && [ -n "$new_ver" ]; then
-            echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          [ -z "$pkg" ] && continue
+          [ -z "$old_ver" ] && continue
+          [ -z "$new_ver" ] && continue
+
+          echo "::notice::Updated $pkg from $old_ver to $new_ver"
+
+          clean_old=$(echo "$old_ver" | sed 's/^[^0-9]*//')
+          clean_new=$(echo "$new_ver" | sed 's/^[^0-9]*//')
+          old_major=$(echo "$clean_old" | cut -d. -f1 | cut -d- -f1)
+          new_major=$(echo "$clean_new" | cut -d. -f1 | cut -d- -f1)
+          old_minor=$(echo "$clean_old" | cut -d. -f2 | cut -d- -f1)
+          new_minor=$(echo "$clean_new" | cut -d. -f2 | cut -d- -f1)
+
+          entry="| \`$pkg\` | \`$old_ver\` | \`$new_ver\` |"
+
+          if [ "$new_major" -gt "$old_major" ] 2>/dev/null; then
+            major_updates+="${entry}"$'\n'
+          elif [ "$new_major" -eq "$old_major" ] 2>/dev/null && [ "$new_minor" -gt "$old_minor" ] 2>/dev/null; then
+            minor_updates+="${entry}"$'\n'
+          else
+            patch_updates+="${entry}"$'\n'
           fi
+        done <<< "$UPDATE_LINES"
+
+        for category in major minor patch; do
+          var="${category}_updates"
+          {
+            echo "${category}<<ENDOF${category^^}"
+            printf "%s" "${!var}"
+            echo "ENDOF${category^^}"
+          } >> "$GITHUB_OUTPUT"
         done
 
+    - name: Build PR description
+      id: build_pr_body
+      if: steps.check_updates.outputs.has_updates == 'true'
+      shell: bash
+      env:
+        MAJOR_UPDATES: ${{ steps.categorize.outputs.major }}
+        MINOR_UPDATES: ${{ steps.categorize.outputs.minor }}
+        PATCH_UPDATES: ${{ steps.categorize.outputs.patch }}
+      run: |
+        pr_body="# :arrows_counterclockwise: NPM Dependencies Update"
+        pr_body+=$'\n'
+
+        if [ -n "$MAJOR_UPDATES" ]; then
+          pr_body+=$'\n'"## :boom: Major Updates (Breaking Changes)"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"> :warning: **These updates may contain breaking changes. Please review carefully!**"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"| Package | Old | New |"
+          pr_body+=$'\n'"| --- | --- | --- |"
+          pr_body+=$'\n'"$MAJOR_UPDATES"
+        fi
+
+        if [ -n "$MINOR_UPDATES" ]; then
+          pr_body+=$'\n'"## :sparkles: Minor Updates"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"| Package | Old | New |"
+          pr_body+=$'\n'"| --- | --- | --- |"
+          pr_body+=$'\n'"$MINOR_UPDATES"
+        fi
+
+        if [ -n "$PATCH_UPDATES" ]; then
+          pr_body+=$'\n'"## :wrench: Patch Updates"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"| Package | Old | New |"
+          pr_body+=$'\n'"| --- | --- | --- |"
+          pr_body+=$'\n'"$PATCH_UPDATES"
+        fi
+
+        pr_body+=$'\n'
+        pr_body+=$'\n'"---"
+        pr_body+=$'\n'
+        pr_body+=$'\n'":robot: *This PR was automatically generated by the NPM Dependencies Update action*"
+
+        {
+          echo "pr_body<<ENDOFBODY"
+          echo "$pr_body"
+          echo "ENDOFBODY"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Install updated dependencies
+      if: steps.check_updates.outputs.has_updates == 'true'
+      shell: bash
+      run: |
         if [ "${{ inputs.relock }}" = "true" ]; then
           rm -f package-lock.json
         fi
@@ -128,27 +232,7 @@ runs:
         files: 'package.json package-lock.json'
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: |
-          # :arrows_counterclockwise: NPM Dependencies Update
-
-          This pull request automatically updates NPM dependencies to their latest versions.
-
-          ## :warning: Important Notes
-
-          - :robot: This PR was **automatically generated**
-          - :mag: Please **review all changes** carefully before merging
-          - :test_tube: Ensure all tests pass and functionality works as expected
-          - :books: Check for any breaking changes in the updated dependencies
-
-          ## :rocket: Next Steps
-
-          1. Review the dependency changes above
-          2. Run tests locally or wait for CI/CD to complete
-          3. Merge when everything looks good!
-
-          ---
-
-          *Generated by the NPM Dependencies Update action* :sparkles:
+        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success'
