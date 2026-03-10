@@ -40,5 +40,6 @@ jobs:
           pr-title: 'feat: Update `action.yml` files'
           commit-message: 'feat: update `action.yml` files'
           file-glob: '[!.]*/action.yml'
+          check-files: '[!.]*/action.yml'
           prefixes: 'actions,hashicorp'
           auto-merge: 'true'
