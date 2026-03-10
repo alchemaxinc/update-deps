@@ -121,7 +121,9 @@ runs:
           pkg=$(echo "$line" | awk '{print $1}')
           old_ver=$(echo "$line" | awk '{print $2}')
           new_ver=$(echo "$line" | awk '{print $4}')
-          [ -z "$pkg" ] || [ -z "$old_ver" ] || [ -z "$new_ver" ] && continue
+          [ -z "$pkg" ] && continue
+          [ -z "$old_ver" ] && continue
+          [ -z "$new_ver" ] && continue
 
           echo "::notice::Updated $pkg from $old_ver to $new_ver"
 
