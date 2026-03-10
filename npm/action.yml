@@ -57,14 +57,14 @@ runs:
         token: ${{ inputs.token }}
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         cache: 'npm'
         node-version-file: '.nvmrc'
 
     - name: Cache npm-check-updates
       id: cache-ncu
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm-global
         key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
@@ -111,6 +111,8 @@ runs:
       id: categorize
       if: steps.check_updates.outputs.has_updates == 'true'
       shell: bash
+      env:
+        UPDATE_LINES: ${{ steps.check_updates.outputs.update_lines }}
       run: |
         major_updates=""
         minor_updates=""
@@ -143,7 +145,7 @@ runs:
           else
             patch_updates+="${entry}"$'\n'
           fi
-        done <<< "${{ steps.check_updates.outputs.update_lines }}"
+        done <<< "$UPDATE_LINES"
 
         for category in major minor patch; do
           var="${category}_updates"
@@ -158,34 +160,38 @@ runs:
       id: build_pr_body
       if: steps.check_updates.outputs.has_updates == 'true'
       shell: bash
+      env:
+        MAJOR_UPDATES: ${{ steps.categorize.outputs.major }}
+        MINOR_UPDATES: ${{ steps.categorize.outputs.minor }}
+        PATCH_UPDATES: ${{ steps.categorize.outputs.patch }}
       run: |
         pr_body="# :arrows_counterclockwise: NPM Dependencies Update"
         pr_body+=$'\n'
 
-        if [ -n "${{ steps.categorize.outputs.major }}" ]; then
+        if [ -n "$MAJOR_UPDATES" ]; then
           pr_body+=$'\n'"## :boom: Major Updates (Breaking Changes)"
           pr_body+=$'\n'
           pr_body+=$'\n'"> :warning: **These updates may contain breaking changes. Please review carefully!**"
           pr_body+=$'\n'
           pr_body+=$'\n'"| Package | Old | New |"
           pr_body+=$'\n'"| --- | --- | --- |"
-          pr_body+=$'\n'"${{ steps.categorize.outputs.major }}"
+          pr_body+=$'\n'"$MAJOR_UPDATES"
         fi
 
-        if [ -n "${{ steps.categorize.outputs.minor }}" ]; then
+        if [ -n "$MINOR_UPDATES" ]; then
           pr_body+=$'\n'"## :sparkles: Minor Updates"
           pr_body+=$'\n'
           pr_body+=$'\n'"| Package | Old | New |"
           pr_body+=$'\n'"| --- | --- | --- |"
-          pr_body+=$'\n'"${{ steps.categorize.outputs.minor }}"
+          pr_body+=$'\n'"$MINOR_UPDATES"
         fi
 
-        if [ -n "${{ steps.categorize.outputs.patch }}" ]; then
+        if [ -n "$PATCH_UPDATES" ]; then
           pr_body+=$'\n'"## :wrench: Patch Updates"
           pr_body+=$'\n'
           pr_body+=$'\n'"| Package | Old | New |"
           pr_body+=$'\n'"| --- | --- | --- |"
-          pr_body+=$'\n'"${{ steps.categorize.outputs.patch }}"
+          pr_body+=$'\n'"$PATCH_UPDATES"
         fi
 
         pr_body+=$'\n'
