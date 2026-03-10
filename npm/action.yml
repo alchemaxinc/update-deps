@@ -112,21 +112,21 @@ runs:
           if [ -n "$pkg" ] && [ -n "$old_ver" ] && [ -n "$new_ver" ]; then
             echo "::notice::Updated $pkg from $old_ver to $new_ver"
 
-            # Strip semver prefixes (^, ~, >=, etc.)
+            # Strip semver range prefixes (^, ~, >=, etc.)
             clean_old=$(echo "$old_ver" | sed 's/^[^0-9]*//')
             clean_new=$(echo "$new_ver" | sed 's/^[^0-9]*//')
 
-            # Extract major and minor version numbers
-            old_major=$(echo "$clean_old" | cut -d. -f1)
-            new_major=$(echo "$clean_new" | cut -d. -f1)
-            old_minor=$(echo "$clean_old" | cut -d. -f2)
-            new_minor=$(echo "$clean_new" | cut -d. -f2)
+            # Extract major and minor version numbers (strip pre-release suffixes)
+            old_major=$(echo "$clean_old" | cut -d. -f1 | cut -d- -f1)
+            new_major=$(echo "$clean_new" | cut -d. -f1 | cut -d- -f1)
+            old_minor=$(echo "$clean_old" | cut -d. -f2 | cut -d- -f1)
+            new_minor=$(echo "$clean_new" | cut -d. -f2 | cut -d- -f1)
 
             entry="| \`$pkg\` | \`$old_ver\` | \`$new_ver\` |"
 
             if [ "$new_major" -gt "$old_major" ] 2>/dev/null; then
               major_updates+="${entry}"$'\n'
-            elif [ "$new_minor" -gt "$old_minor" ] 2>/dev/null; then
+            elif [ "$new_major" -eq "$old_major" ] 2>/dev/null && [ "$new_minor" -gt "$old_minor" ] 2>/dev/null; then
               minor_updates+="${entry}"$'\n'
             else
               patch_updates+="${entry}"$'\n'
