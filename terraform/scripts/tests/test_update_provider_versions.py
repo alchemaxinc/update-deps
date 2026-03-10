@@ -93,18 +93,12 @@ class TestUpdateProviderVersions(unittest.TestCase):
                 cmd = args[0]
                 url = cmd[-1]
                 if "hashicorp/aws" in url:
-                    return mock.Mock(
-                        returncode=0, stdout='{"version": "6.35.1"}'
-                    )
+                    return mock.Mock(returncode=0, stdout='{"version": "6.35.1"}')
                 elif "lukasaron/stripe" in url:
-                    return mock.Mock(
-                        returncode=0, stdout='{"version": "3.4.1"}'
-                    )
+                    return mock.Mock(returncode=0, stdout='{"version": "3.4.1"}')
                 return mock.Mock(returncode=1, stdout="")
 
-            with mock.patch.object(
-                module.subprocess, "run", side_effect=fake_curl
-            ):
+            with mock.patch.object(module.subprocess, "run", side_effect=fake_curl):
                 with mock.patch.object(
                     sys, "argv", ["script", str(workdir), str(versions_path)]
                 ):
