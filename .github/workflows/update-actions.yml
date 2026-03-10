@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Update GitHub Actions
+      - name: Update GitHub Actions (local workflow)
         uses: ./actions
         with:
           token: ${{ steps.app.outputs.token }}
@@ -28,5 +28,17 @@ jobs:
           pr-title: 'chore: Update GitHub Actions'
           commit-message: 'chore: update gitHub actions'
           file-glob: '.github/**/*.yml'
+          prefixes: 'actions'
+          auto-merge: 'true'
+
+      - name: Update GitHub Actions  (files in top-level non-hidden folders)
+        uses: ./actions
+        with:
+          token: ${{ steps.app.outputs.token }}
+          base-branch: 'main'
+          branch-prefix: 'update-actions'
+          pr-title: 'feat: Update `action.yml` files'
+          commit-message: 'feat: update `action.yml` files'
+          file-glob: '[!.]*/action.yml'
           prefixes: 'actions,hashicorp'
           auto-merge: 'true'
