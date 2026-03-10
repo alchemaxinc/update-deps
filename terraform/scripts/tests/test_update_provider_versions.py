@@ -50,6 +50,64 @@ class TestUpdateProviderVersions(unittest.TestCase):
             updated = tf_path.read_text(encoding="utf-8")
             self.assertIn('version = "~> 5.2"', updated)
 
+    def test_updates_when_current_equals_latest(self):
+        """Covers the real-world case: terraform init already installed the
+        latest version within the constraint, so current == latest, but the
+        constraint in the .tf file is still stale (e.g. ~> 6.0 vs 6.35.1)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = Path(tmpdir)
+            versions_path = workdir / "versions.json"
+            tf_path = workdir / "main.tf"
+
+            versions_path.write_text(
+                json.dumps(
+                    {
+                        "provider_selections": {
+                            "registry.terraform.io/hashicorp/aws": "6.35.1",
+                            "registry.terraform.io/lukasaron/stripe": "3.4.1",
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            tf_path.write_text(
+                """
+                terraform {
+                  required_providers {
+                    aws = {
+                      source  = "hashicorp/aws"
+                      version = "~> 6.0"
+                    }
+                    stripe = {
+                      source  = "lukasaron/stripe"
+                      version = "~> 3.3"
+                    }
+                  }
+                }
+                """,
+                encoding="utf-8",
+            )
+
+            def fake_curl(*args, **kwargs):
+                cmd = args[0]
+                url = cmd[-1]
+                if "hashicorp/aws" in url:
+                    return mock.Mock(returncode=0, stdout='{"version": "6.35.1"}')
+                elif "lukasaron/stripe" in url:
+                    return mock.Mock(returncode=0, stdout='{"version": "3.4.1"}')
+                return mock.Mock(returncode=1, stdout="")
+
+            with mock.patch.object(module.subprocess, "run", side_effect=fake_curl):
+                with mock.patch.object(
+                    sys, "argv", ["script", str(workdir), str(versions_path)]
+                ):
+                    module.main()
+
+            updated = tf_path.read_text(encoding="utf-8")
+            self.assertIn('version = "~> 6.35"', updated)
+            self.assertIn('version = "~> 3.4"', updated)
+
     def test_missing_versions_file_exits(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = Path(tmpdir)

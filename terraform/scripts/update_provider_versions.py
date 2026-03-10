@@ -131,9 +131,6 @@ def main():
             if not provider_info["latest"]:
                 continue
 
-            if provider_info["latest"] == provider_info["current"]:
-                continue
-
             # Extract major.minor version from latest version (ignore patch)
             latest_version = provider_info["latest"]
             version_parts = latest_version.split(".")
