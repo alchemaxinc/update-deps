@@ -59,7 +59,7 @@ runs:
 
     - name: Cache yq binary
       id: cache-yq
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.local/bin/yq
         key: yq-${{ inputs.yq-version }}-linux-amd64
