@@ -38,7 +38,6 @@ jobs:
         with:
           shallow: 'false'
           token: ${{ steps.app.outputs.token }}
-          app-slug: alchemax-housekeeper
 
       - name: Determine tag
         id: get-tag
