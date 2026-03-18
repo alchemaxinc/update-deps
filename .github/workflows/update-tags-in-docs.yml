@@ -2,7 +2,7 @@ name: Update Tags in Documentation
 
 on:
   workflow_run:
-    workflows: ["Semantic Versioning and Release"]
+    workflows: ['Semantic Versioning and Release']
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -25,10 +25,20 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
+      - name: Create temporary GitHub App Token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
+          private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout and setup
         uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
         with:
           shallow: 'false'
+          token: ${{ steps.app.outputs.token }}
+          app-slug: alchemax-housekeeper
 
       - name: Determine tag
         id: get-tag
@@ -68,7 +78,7 @@ jobs:
         if: steps.sync-tags.outputs.files_updated != ''
         uses: alchemaxinc/composite-toolbox/create-pr@v1
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
           branch-prefix: 'update-docs-tags'
           files: ${{ steps.sync-tags.outputs.files_updated }}
@@ -84,6 +94,6 @@ jobs:
         if: steps.create-pr.outputs.pr_number != ''
         uses: alchemaxinc/composite-toolbox/merge-pr@v1
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}
           pull-request-number: ${{ steps.create-pr.outputs.pr_number }}
           merge-method: 'squash'
