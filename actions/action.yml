@@ -43,6 +43,11 @@ inputs:
     description: 'Comma-separated list of action prefixes to include'
     default: 'actions'
 
+  app-slug:
+    required: false
+    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    default: ''
+
   auto-merge:
     required: false
     description: 'Whether a successful PR should be automatically merged'
@@ -61,6 +66,7 @@ runs:
       uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
       with:
         token: ${{ inputs.token }}
+        app-slug: ${{ inputs.app-slug }}
 
     - name: Setup Python
       uses: actions/setup-python@v6
