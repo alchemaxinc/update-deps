@@ -1,11 +1,15 @@
 name: Update Tags in Documentation
 
 on:
+  workflow_run:
+    workflows: ['Semantic Versioning and Release']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to update documentation to'
-        required: true
+        description: 'Tag to update documentation to (e.g., v1.10.2)'
+        required: false
         type: string
 
 permissions:
@@ -16,27 +20,52 @@ jobs:
   update-docs:
     name: Update Documentation Tags
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
+      - name: Create temporary GitHub App Token
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
+          private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Checkout and setup
         uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+        with:
+          shallow: 'false'
+          token: ${{ steps.app.outputs.token }}
 
-      - name: Get release tag
+      - name: Determine tag
         id: get-tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "::debug::Updating documentation to tag: $TAG"
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            git fetch --tags
+            TAG=$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag found"
+            exit 1
+          fi
+
+          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::notice::Tag '$TAG' is not a full semantic version, skipping"
             exit 0
           fi
 
-          TAG="${{ github.event.inputs.tag }}"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "::debug::Updating documentation to tag: $TAG"
 
       - name: Sync tags in documentation
         id: sync-tags
+        if: steps.get-tag.outputs.tag != ''
         uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
         with:
           file-extensions: '.md'
@@ -44,27 +73,26 @@ jobs:
           current-tag: ${{ steps.get-tag.outputs.tag }}
 
       - name: Create Pull Request
+        id: create-pr
         if: steps.sync-tags.outputs.files_updated != ''
         uses: alchemaxinc/composite-toolbox/create-pr@v1
         with:
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
           branch-prefix: 'update-docs-tags'
           files: ${{ steps.sync-tags.outputs.files_updated }}
-          commit-message: 'docs: update action tags to `${{ steps.get-tag.outputs.tag }}`'
-          pr-title: 'Update documentation tags to `${{ steps.get-tag.outputs.tag }}`'
+          commit-message: 'docs: update action tags to ${{ steps.get-tag.outputs.tag }}'
+          pr-title: 'docs: update action tags to ${{ steps.get-tag.outputs.tag }}'
           pr-body: |
-            # :bookmark: Update Documentation Tags
+            Automatically updates GitHub action tags in documentation files to match the latest release.
 
-            This pull request automatically updates GitHub action tags in documentation files to match the latest release.
+            **New tag**: `${{ steps.get-tag.outputs.tag }}`
+            **Files updated**: `${{ steps.sync-tags.outputs.files_updated }}`
 
-            ## :information_source: Details
-
-            - :label: **New tag**: `${{ steps.get-tag.outputs.tag }}`
-            - :page_facing_up: **Files updated**: ${{ steps.sync-tags.outputs.files_updated }}
-            - :robot: This PR was **automatically generated** from release `${{ steps.get-tag.outputs.tag }}`
-
-            ## :warning: Important Notes
-
-            - :mag: Please **review all changes** carefully before merging
-            - :gear: Ensure all action references are correctly updated
+      - name: Enable auto-merge
+        if: steps.create-pr.outputs.pr_number != ''
+        uses: alchemaxinc/composite-toolbox/merge-pr@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          pull-request-number: ${{ steps.create-pr.outputs.pr_number }}
+          merge-method: 'squash'
