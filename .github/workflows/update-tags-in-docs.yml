@@ -39,7 +39,7 @@ jobs:
             TAG="$INPUT_TAG"
           else
             git fetch --tags
-            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            TAG=$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || echo "")
           fi
 
           if [ -z "$TAG" ]; then
