@@ -1,0 +1,219 @@
+name: 'Update Cargo Dependencies'
+
+description: 'Update Rust toolchain version and Cargo dependencies'
+
+inputs:
+  token:
+    required: false
+    description: 'GitHub token'
+    default: ${{ github.token }}
+
+  base-branch:
+    required: true
+    description: 'Base branch for PR'
+    default: 'main'
+
+  branch-prefix:
+    required: false
+    description: 'Branch prefix'
+    default: 'update-dependencies'
+
+  pr-title:
+    required: false
+    description: 'Title for the pull request'
+    default: 'Update Cargo Dependencies'
+
+  commit-message:
+    required: false
+    description: 'The commit message for the update'
+    default: 'Update Cargo dependencies'
+
+  app-slug:
+    required: false
+    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    default: ''
+
+  auto-merge:
+    required: false
+    description: 'Whether a successful PR should be automatically merged'
+    default: 'false'
+
+  update-toolchain:
+    required: false
+    description: 'Whether to update the Rust toolchain version'
+    default: 'true'
+
+  update-deps:
+    required: false
+    description: 'Whether to update Cargo dependencies'
+    default: 'true'
+
+  dry-run:
+    required: false
+    description: 'Run without creating a PR (for testing purposes)'
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout and setup
+      if: inputs.dry-run != 'true'
+      uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+      with:
+        token: ${{ inputs.token }}
+        app-slug: ${{ inputs.app-slug }}
+
+    - name: Read current Rust version
+      id: current_version
+      shell: bash
+      run: |
+        if [ ! -f rust-toolchain.toml ]; then
+          echo "::error::rust-toolchain.toml not found. This file is required as the source of truth for the Rust version."
+          exit 1
+        fi
+        version=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "::notice::Current Rust toolchain version: $version"
+
+        is_stable="false"
+        if echo "$version" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          is_stable="true"
+        fi
+        echo "is_stable=$is_stable" >> "$GITHUB_OUTPUT"
+
+        if [ "$is_stable" = "false" ]; then
+          echo "::warning::Rust channel '$version' is not a stable version. Toolchain update will be skipped."
+        fi
+
+    - name: Setup Rust toolchain
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ steps.current_version.outputs.version }}
+
+    - name: Get latest stable Rust version
+      id: latest_version
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true'
+      shell: bash
+      run: |
+        tag=$(gh api repos/rust-lang/rust/releases/latest --jq '.tag_name')
+        echo "version=$tag" >> "$GITHUB_OUTPUT"
+        echo "::notice::Latest stable Rust version: $tag"
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+
+    - name: Update toolchain version
+      id: toolchain_update
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true' && steps.current_version.outputs.version != steps.latest_version.outputs.version
+      shell: bash
+      run: |
+        old="${{ steps.current_version.outputs.version }}"
+        new="${{ steps.latest_version.outputs.version }}"
+        sed -i "s/channel = \"$old\"/channel = \"$new\"/" rust-toolchain.toml
+        echo "updated=true" >> "$GITHUB_OUTPUT"
+        echo "::notice::Updated Rust toolchain from $old to $new"
+
+    - name: Discover Cargo.toml files
+      id: discover
+      if: inputs.update-deps == 'true'
+      shell: bash
+      run: |
+        manifests=$(find . -name Cargo.toml -not -path '*/target/*' | sort)
+        echo "manifests<<EOF" >> "$GITHUB_OUTPUT"
+        echo "$manifests" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
+        echo "::notice::Discovered Cargo manifests: $(echo "$manifests" | tr '\n' ' ')"
+
+    - name: Update Cargo dependencies
+      if: inputs.update-deps == 'true'
+      shell: bash
+      run: |
+        while IFS= read -r manifest; do
+          [ -z "$manifest" ] && continue
+          echo "::notice::Running cargo update for $manifest"
+          cargo update --manifest-path "$manifest"
+        done <<< "${{ steps.discover.outputs.manifests }}"
+
+    - name: Collect modified files
+      id: collect_files
+      shell: bash
+      run: |
+        files="rust-toolchain.toml"
+
+        if [ "${{ inputs.update-deps }}" = "true" ]; then
+          while IFS= read -r manifest; do
+            [ -z "$manifest" ] && continue
+            dir=$(dirname "$manifest")
+            files+=" $manifest"
+            if [ -f "$dir/Cargo.lock" ]; then
+              files+=" $dir/Cargo.lock"
+            fi
+          done <<< "${{ steps.discover.outputs.manifests }}"
+        fi
+
+        echo "files=$files" >> "$GITHUB_OUTPUT"
+
+    - name: Build PR body
+      id: build_pr_body
+      shell: bash
+      run: |
+        pr_body="# :arrows_counterclockwise: Cargo Dependencies Update"
+        pr_body+=$'\n'
+
+        if [ "${{ steps.toolchain_update.outputs.updated }}" = "true" ]; then
+          pr_body+=$'\n'"## :gear: Rust Toolchain"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"| | Version |"
+          pr_body+=$'\n'"| --- | --- |"
+          pr_body+=$'\n'"| **Previous** | \`${{ steps.current_version.outputs.version }}\` |"
+          pr_body+=$'\n'"| **Updated** | \`${{ steps.latest_version.outputs.version }}\` |"
+          pr_body+=$'\n'
+        fi
+
+        if [ "${{ inputs.update-deps }}" = "true" ]; then
+          pr_body+=$'\n'"## :package: Cargo Dependencies"
+          pr_body+=$'\n'
+          pr_body+=$'\n'"Ran \`cargo update\` for the following manifests:"
+          pr_body+=$'\n'
+          while IFS= read -r manifest; do
+            [ -z "$manifest" ] && continue
+            pr_body+=$'\n'"- \`$manifest\`"
+          done <<< "${{ steps.discover.outputs.manifests }}"
+          pr_body+=$'\n'
+        fi
+
+        pr_body+=$'\n'"---"
+        pr_body+=$'\n'
+        pr_body+=$'\n'":robot: *This PR was automatically generated by the Cargo Dependencies Update action*"
+
+        {
+          echo "pr_body<<ENDOFBODY"
+          echo "$pr_body"
+          echo "ENDOFBODY"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Check for changes
+      id: check_changes
+      if: inputs.dry-run != 'true'
+      uses: alchemaxinc/composite-toolbox/check-changes@v1
+      with:
+        files: ${{ steps.collect_files.outputs.files }}
+
+    - name: Create Pull Request
+      id: open-pr
+      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true'
+      uses: alchemaxinc/composite-toolbox/create-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        base-branch: ${{ inputs.base-branch }}
+        branch-prefix: ${{ inputs.branch-prefix }}
+        files: ${{ steps.collect_files.outputs.files }}
+        commit-message: ${{ inputs.commit-message }}
+        pr-title: ${{ inputs.pr-title }}
+        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+
+    - name: Auto-merge Pull Request
+      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success'
+      uses: alchemaxinc/composite-toolbox/merge-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        pull-request-number: ${{ steps.open-pr.outputs.pr_number }}

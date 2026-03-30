@@ -106,6 +106,22 @@ jobs:
         with:
           dry-run: 'true'
 
+  test-cargo:
+    name: Test Cargo Dependencies Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup test fixtures
+        run: |
+          cp cargo/test/rust-toolchain.toml .
+          cp -r cargo/test/wrapper .
+
+      - name: Test Cargo dependencies updater
+        uses: ./cargo
+        with:
+          dry-run: 'true'
+
   test-terraform:
     name: Test Terraform Dependencies Updater
     runs-on: ubuntu-latest

@@ -10,4 +10,5 @@ A collection of convenient GitHub Actions for automatically updating your softwa
 - :gear: **[Go Dependencies](./golang/README.md)** - Updates Go module dependencies
 - :arrows_counterclockwise: **[CircleCI Orbs](./circleci-orbs/README.md)** - Updates CircleCI orbs to their latest versions
 - :globe_with_meridians: **[Terraform Dependencies](./terraform/README.md)** - Updates Terraform provider dependencies
+- :crab: **[Cargo Dependencies](./cargo/README.md)** - Updates Rust toolchain version and Cargo dependencies
 - :octocat: **[GitHub Actions](./actions/README.md)** - Updates GitHub Actions in workflow files to their latest versions
