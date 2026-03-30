@@ -162,25 +162,29 @@ runs:
     - name: Build PR body
       id: build_pr_body
       shell: bash
+      env:
+        TOOLCHAIN_UPDATED: ${{ steps.toolchain_update.outputs.updated }}
+        CURRENT_VERSION: ${{ steps.current_version.outputs.version }}
+        LATEST_VERSION: ${{ steps.latest_version.outputs.version }}
+        DEP_UPDATES: ${{ steps.update_deps.outputs.dep_updates }}
       run: |
         pr_body="# :arrows_counterclockwise: Cargo Dependencies Update"
         pr_body+=$'\n'
 
-        if [ "${{ steps.toolchain_update.outputs.updated }}" = "true" ]; then
+        if [ "$TOOLCHAIN_UPDATED" = "true" ]; then
           pr_body+=$'\n'"## :gear: Rust Toolchain"
           pr_body+=$'\n'
           pr_body+=$'\n'"| | Version |"
           pr_body+=$'\n'"| --- | --- |"
-          pr_body+=$'\n'"| **Previous** | \`${{ steps.current_version.outputs.version }}\` |"
-          pr_body+=$'\n'"| **Updated** | \`${{ steps.latest_version.outputs.version }}\` |"
+          pr_body+=$'\n'"| **Previous** | \`$CURRENT_VERSION\` |"
+          pr_body+=$'\n'"| **Updated** | \`$LATEST_VERSION\` |"
           pr_body+=$'\n'
         fi
 
-        dep_updates="${{ steps.update_deps.outputs.dep_updates }}"
-        if [ -n "$dep_updates" ]; then
+        if [ -n "$DEP_UPDATES" ]; then
           pr_body+=$'\n'"## :package: Cargo Dependencies"
           pr_body+=$'\n'
-          pr_body+=$'\n'"$dep_updates"
+          pr_body+=$'\n'"$DEP_UPDATES"
         fi
 
         pr_body+=$'\n'"---"

@@ -14,9 +14,21 @@ env:
   PYTHON_VERSION: '3.14'
 
 jobs:
-  python-unit-tests-actions:
-    name: Python Unit Tests (GitHub Actions)
+  python-unit-tests:
+    name: Python Unit Tests (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: GitHub Actions
+            directory: actions
+            has-requirements: true
+          - name: Terraform
+            directory: terraform
+            has-requirements: false
+          - name: Cargo
+            directory: cargo
+            has-requirements: false
     steps:
       - &checkout-code
         name: Checkout code
@@ -29,35 +41,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        working-directory: actions
+        if: matrix.has-requirements
+        working-directory: ${{ matrix.directory }}
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run unit tests
-        working-directory: actions
-        run: python -m unittest discover -s . -p "test_*.py" -v
-
-  python-unit-tests-terraform:
-    name: Python Unit Tests (Terraform)
-    runs-on: ubuntu-latest
-    steps:
-      - *checkout-code
-      - *setup-python
-
-      - name: Run unit tests
-        working-directory: terraform
-        run: python -m unittest discover -s . -p "test_*.py" -v
-
-  python-unit-tests-cargo:
-    name: Python Unit Tests (Cargo)
-    runs-on: ubuntu-latest
-    steps:
-      - *checkout-code
-      - *setup-python
-
-      - name: Run unit tests
-        working-directory: cargo
+        working-directory: ${{ matrix.directory }}
         run: python -m unittest discover -s . -p "test_*.py" -v
 
   test-actions:
