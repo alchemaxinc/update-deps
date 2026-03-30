@@ -75,6 +75,16 @@ runs:
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "::notice::Current Rust toolchain version: $version"
 
+        is_stable="false"
+        if echo "$version" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+          is_stable="true"
+        fi
+        echo "is_stable=$is_stable" >> "$GITHUB_OUTPUT"
+
+        if [ "$is_stable" = "false" ]; then
+          echo "::warning::Rust channel '$version' is not a stable version. Toolchain update will be skipped."
+        fi
+
     - name: Setup Rust toolchain
       uses: dtolnay/rust-toolchain@master
       with:
@@ -82,7 +92,7 @@ runs:
 
     - name: Get latest stable Rust version
       id: latest_version
-      if: inputs.update-toolchain == 'true'
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true'
       shell: bash
       run: |
         tag=$(gh api repos/rust-lang/rust/releases/latest --jq '.tag_name')
@@ -93,7 +103,7 @@ runs:
 
     - name: Update toolchain version
       id: toolchain_update
-      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.version != steps.latest_version.outputs.version
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true' && steps.current_version.outputs.version != steps.latest_version.outputs.version
       shell: bash
       run: |
         old="${{ steps.current_version.outputs.version }}"
