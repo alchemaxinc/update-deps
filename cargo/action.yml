@@ -123,13 +123,20 @@ runs:
         echo "EOF" >> "$GITHUB_OUTPUT"
         echo "::notice::Discovered Cargo manifests: $(echo "$manifests" | tr '\n' ' ')"
 
-    - name: Update Cargo dependencies
+    - name: Update Cargo.toml dependencies
+      id: update_deps
+      if: inputs.update-deps == 'true'
+      shell: bash
+      run: |
+        python3 "${{ github.action_path }}/scripts/update_cargo_deps.py" \
+          $(echo '${{ steps.discover.outputs.manifests }}' | tr '\n' ' ')
+
+    - name: Refresh Cargo.lock files
       if: inputs.update-deps == 'true'
       shell: bash
       run: |
         while IFS= read -r manifest; do
           [ -z "$manifest" ] && continue
-          echo "::notice::Running cargo update for $manifest"
           cargo update --manifest-path "$manifest"
         done <<< "${{ steps.discover.outputs.manifests }}"
 
@@ -169,16 +176,11 @@ runs:
           pr_body+=$'\n'
         fi
 
-        if [ "${{ inputs.update-deps }}" = "true" ]; then
+        dep_updates="${{ steps.update_deps.outputs.dep_updates }}"
+        if [ -n "$dep_updates" ]; then
           pr_body+=$'\n'"## :package: Cargo Dependencies"
           pr_body+=$'\n'
-          pr_body+=$'\n'"Ran \`cargo update\` for the following manifests:"
-          pr_body+=$'\n'
-          while IFS= read -r manifest; do
-            [ -z "$manifest" ] && continue
-            pr_body+=$'\n'"- \`$manifest\`"
-          done <<< "${{ steps.discover.outputs.manifests }}"
-          pr_body+=$'\n'
+          pr_body+=$'\n'"$dep_updates"
         fi
 
         pr_body+=$'\n'"---"
