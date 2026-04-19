@@ -50,16 +50,17 @@ jobs:
 
 ## :gear: Inputs
 
-| Input              | Description                                          | Required           | Default                     |
-| ------------------ | ---------------------------------------------------- | ------------------ | --------------------------- |
-| `base-branch`      | Base branch for the pull request                     | :white_check_mark: | `main`                      |
-| `token`            | GitHub token for authentication                      | :x:                | `${{ github.token }}`       |
-| `branch-prefix`    | Prefix for the update branch                         | :x:                | `update-dependencies`       |
-| `pr-title`         | Title for the pull request                           | :x:                | `Update Cargo Dependencies` |
-| `commit-message`   | Commit message for the update                        | :x:                | `Update Cargo dependencies` |
-| `auto-merge`       | Whether automatic merge should be enabled for the PR | :x:                | `false`                     |
-| `update-toolchain` | Whether to update the Rust toolchain version         | :x:                | `true`                      |
-| `update-deps`      | Whether to update Cargo dependencies                 | :x:                | `true`                      |
+| Input               | Description                                                                                | Required           | Default                     |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | --------------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                      |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`       |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`       |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Cargo Dependencies` |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Cargo dependencies` |
+| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                     |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                     |
+| `update-toolchain`  | Whether to update the Rust toolchain version                                               | :x:                | `true`                      |
+| `update-deps`       | Whether to update Cargo dependencies                                                       | :x:                | `true`                      |
 
 ## :mag: How It Works
 
