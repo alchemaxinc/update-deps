@@ -36,16 +36,17 @@ python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --prefixes 'ac
 
 ## :gear: Inputs
 
-| Input            | Description                                         | Required           | Default                 |
-| ---------------- | --------------------------------------------------- | ------------------ | ----------------------- |
-| `base-branch`    | Base branch for the pull request                    | :white_check_mark: | `main`                  |
-| `token`          | GitHub token for authentication                     | :x:                | `${{ github.token }}`   |
-| `branch-prefix`  | Prefix for the update branch                        | :x:                | `update-actions`        |
-| `pr-title`       | Title for the pull request                          | :x:                | `Update GitHub Actions` |
-| `commit-message` | Commit message for the update                       | :x:                | `Update GitHub Actions` |
-| `file-glob`      | Glob for workflow files (relative to repo root)     | :x:                | `.github/**/*.yml`      |
-| `prefixes`       | Comma-separated list of action prefixes to include  | :x:                | `actions`               |
-| `auto-merge`     | Wether automatic merge should be enabled for the PR | :x:                | `false`                 |
+| Input               | Description                                                                                | Required           | Default                 |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ----------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                  |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`   |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-actions`        |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update GitHub Actions` |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update GitHub Actions` |
+| `file-glob`         | Glob for workflow files (relative to repo root)                                            | :x:                | `.github/**/*.yml`      |
+| `prefixes`          | Comma-separated list of action prefixes to include                                         | :x:                | `actions`               |
+| `auto-merge`        | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                 |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                 |
 
 ## :warning: Prerequisites
 

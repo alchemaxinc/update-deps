@@ -36,17 +36,18 @@ jobs:
 
 ## :gear: Inputs
 
-| Input            | Description                                                       | Required           | Default                         |
-| ---------------- | ----------------------------------------------------------------- | ------------------ | ------------------------------- |
-| `base-branch`    | Base branch for the pull request                                  | :white_check_mark: | `main`                          |
-| `token`          | GitHub token for authentication                                   | :x:                | `${{ github.token }}`           |
-| `branch-prefix`  | Prefix for the update branch                                      | :x:                | `update-dependencies`           |
-| `pr-title`       | Title for the pull request                                        | :x:                | `Update Terraform Dependencies` |
-| `commit-message` | Commit message for the update                                     | :x:                | `Update Terraform dependencies` |
-| `working-dir`    | Working directory for Terraform                                   | :white_check_mark: | -                               |
-| `var-file-path`  | Path to Terraform variables file                                  | :white_check_mark: | -                               |
-| `backend-config` | Backend configuration value for `terraform init -backend-config=` | :x:                | -                               |
-| `auto-merge`     | Wether automatic merge should be enabled for the PR               | :x:                | `false`                         |
+| Input               | Description                                                                                | Required           | Default                         |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                          |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`           |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`           |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Terraform Dependencies` |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Terraform dependencies` |
+| `working-dir`       | Working directory for Terraform                                                            | :white_check_mark: | -                               |
+| `var-file-path`     | Path to Terraform variables file                                                           | :white_check_mark: | -                               |
+| `backend-config`    | Backend configuration value for `terraform init -backend-config=`                          | :x:                | -                               |
+| `auto-merge`        | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                         |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                         |
 
 ## :gear: How It Works
 

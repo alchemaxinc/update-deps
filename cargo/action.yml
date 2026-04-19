@@ -38,6 +38,11 @@ inputs:
     description: 'Whether a successful PR should be automatically merged'
     default: 'false'
 
+  skip-if-pr-exists:
+    required: false
+    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    default: 'false'
+
   update-toolchain:
     required: false
     description: 'Whether to update the Rust toolchain version'
@@ -63,7 +68,32 @@ runs:
         token: ${{ inputs.token }}
         app-slug: ${{ inputs.app-slug }}
 
+    - name: Check for existing pull request
+      id: check_existing_pr
+      if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+      run: |
+        existing=$(gh pr list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --base "$BASE_BRANCH" \
+          --limit 200 \
+          --json title,number \
+          --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
+
+        if [ -n "$existing" ]; then
+          echo "::notice::Open PR #$existing with title \"$PR_TITLE\" already exists; skipping PR creation"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Read current Rust version
+      if: steps.check_existing_pr.outputs.exists != 'true'
       id: current_version
       shell: bash
       run: |
@@ -86,13 +116,14 @@ runs:
         fi
 
     - name: Setup Rust toolchain
+      if: steps.check_existing_pr.outputs.exists != 'true'
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ steps.current_version.outputs.version }}
 
     - name: Get latest stable Rust version
       id: latest_version
-      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true'
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         tag=$(gh api repos/rust-lang/rust/releases/latest --jq '.tag_name')
@@ -103,7 +134,7 @@ runs:
 
     - name: Update toolchain version
       id: toolchain_update
-      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true' && steps.current_version.outputs.version != steps.latest_version.outputs.version
+      if: inputs.update-toolchain == 'true' && steps.current_version.outputs.is_stable == 'true' && steps.current_version.outputs.version != steps.latest_version.outputs.version && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         old="${{ steps.current_version.outputs.version }}"
@@ -114,7 +145,7 @@ runs:
 
     - name: Discover Cargo.toml files
       id: discover
-      if: inputs.update-deps == 'true'
+      if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         manifests=$(find . -name Cargo.toml -not -path '*/target/*' | sort)
@@ -125,14 +156,14 @@ runs:
 
     - name: Update Cargo.toml dependencies
       id: update_deps
-      if: inputs.update-deps == 'true'
+      if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         python3 "${{ github.action_path }}/scripts/update_cargo_deps.py" \
           $(echo '${{ steps.discover.outputs.manifests }}' | tr '\n' ' ')
 
     - name: Refresh Cargo.lock files
-      if: inputs.update-deps == 'true'
+      if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         while IFS= read -r manifest; do
@@ -141,6 +172,7 @@ runs:
         done <<< "${{ steps.discover.outputs.manifests }}"
 
     - name: Collect modified files
+      if: steps.check_existing_pr.outputs.exists != 'true'
       id: collect_files
       shell: bash
       run: |
@@ -160,6 +192,7 @@ runs:
         echo "files=$files" >> "$GITHUB_OUTPUT"
 
     - name: Build PR body
+      if: steps.check_existing_pr.outputs.exists != 'true'
       id: build_pr_body
       shell: bash
       env:
@@ -199,14 +232,14 @@ runs:
 
     - name: Check for changes
       id: check_changes
-      if: inputs.dry-run != 'true'
+      if: inputs.dry-run != 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/check-changes@v1
       with:
         files: ${{ steps.collect_files.outputs.files }}
 
     - name: Create Pull Request
       id: open-pr
-      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true'
+      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/create-pr@v1
       with:
         token: ${{ inputs.token }}
@@ -218,7 +251,7 @@ runs:
         pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
 
     - name: Auto-merge Pull Request
-      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success'
+      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}

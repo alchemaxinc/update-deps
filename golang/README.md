@@ -29,15 +29,16 @@ jobs:
 
 ## :gear: Inputs
 
-| Input            | Description                                         | Required           | Default                      |
-| ---------------- | --------------------------------------------------- | ------------------ | ---------------------------- |
-| `base-branch`    | Base branch for the pull request                    | :white_check_mark: | `main`                       |
-| `token`          | GitHub token for authentication                     | :x:                | `${{ github.token }}`        |
-| `branch-prefix`  | Prefix for the update branch                        | :x:                | `update-dependencies`        |
-| `pr-title`       | Title for the pull request                          | :x:                | `Update Golang Dependencies` |
-| `commit-message` | Commit message for the update                       | :x:                | `Update Golang dependencies` |
-| `auto-merge`     | Wether automatic merge should be enabled for the PR | :x:                | `false`                      |
-| `strategy`       | Dependency update strategy                          | :x:                | `controlled`                 |
+| Input               | Description                                                                                | Required           | Default                      |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ---------------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                       |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`        |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`        |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Golang Dependencies` |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Golang dependencies` |
+| `auto-merge`        | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                      |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                      |
+| `strategy`          | Dependency update strategy                                                                 | :x:                | `controlled`                 |
 
 ## 📋 Update Strategies
 

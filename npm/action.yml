@@ -47,6 +47,11 @@ inputs:
     description: 'Whether a successful PR should be automatically merged'
     default: 'false'
 
+  skip-if-pr-exists:
+    required: false
+    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    default: 'false'
+
   dry-run:
     required: false
     description: 'Run without creating a PR (for testing purposes)'
@@ -62,13 +67,39 @@ runs:
         token: ${{ inputs.token }}
         app-slug: ${{ inputs.app-slug }}
 
+    - name: Check for existing pull request
+      id: check_existing_pr
+      if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+      run: |
+        existing=$(gh pr list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --base "$BASE_BRANCH" \
+          --limit 200 \
+          --json title,number \
+          --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
+
+        if [ -n "$existing" ]; then
+          echo "::notice::Open PR #$existing with title \"$PR_TITLE\" already exists; skipping PR creation"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Setup Node.js
+      if: steps.check_existing_pr.outputs.exists != 'true'
       uses: actions/setup-node@v6
       with:
         cache: 'npm'
         node-version-file: '.nvmrc'
 
     - name: Cache npm-check-updates
+      if: steps.check_existing_pr.outputs.exists != 'true'
       id: cache-ncu
       uses: actions/cache@v5
       with:
@@ -78,7 +109,7 @@ runs:
           npm-ncu-${{ runner.os }}-
 
     - name: Install npm-check-updates
-      if: steps.cache-ncu.outputs.cache-hit != 'true'
+      if: steps.cache-ncu.outputs.cache-hit != 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         npm config set prefix '~/.npm-global'
@@ -86,6 +117,7 @@ runs:
         npm install -g npm-check-updates
 
     - name: Check for available updates
+      if: steps.check_existing_pr.outputs.exists != 'true'
       id: check_updates
       shell: bash
       run: |
@@ -107,7 +139,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Apply updates to package.json
-      if: steps.check_updates.outputs.has_updates == 'true'
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         export PATH=~/.npm-global/bin:$PATH
@@ -115,7 +147,7 @@ runs:
 
     - name: Categorize updates by semver change
       id: categorize
-      if: steps.check_updates.outputs.has_updates == 'true'
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       env:
         UPDATE_LINES: ${{ steps.check_updates.outputs.update_lines }}
@@ -164,7 +196,7 @@ runs:
 
     - name: Build PR description
       id: build_pr_body
-      if: steps.check_updates.outputs.has_updates == 'true'
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       env:
         MAJOR_UPDATES: ${{ steps.categorize.outputs.major }}
@@ -212,7 +244,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Install updated dependencies
-      if: steps.check_updates.outputs.has_updates == 'true'
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
         if [ "${{ inputs.relock }}" = "true" ]; then
@@ -222,14 +254,14 @@ runs:
 
     - name: Check for changes
       id: check_changes
-      if: inputs.dry-run != 'true'
+      if: inputs.dry-run != 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/check-changes@v1
       with:
         files: 'package.json package-lock.json'
 
     - name: Create Pull Request
       id: open-pr
-      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true'
+      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/create-pr@v1
       with:
         token: ${{ inputs.token }}
@@ -241,7 +273,7 @@ runs:
         pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
 
     - name: Auto-merge Pull Request
-      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success'
+      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/merge-pr@v1
       with:
         token: ${{ inputs.token }}
