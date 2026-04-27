@@ -71,7 +71,9 @@ def update_actions(
             upgrade_key = (action_ref, current_tag)
             if upgrade_key not in upgrades:
                 upgrades[upgrade_key] = latest_tag
-                print(f"::notice::Updated {action_ref} from {current_tag} to {latest_tag}")
+                print(
+                    f"::notice::Updated {action_ref} from {current_tag} to {latest_tag}"
+                )
 
     if not upgrades:
         print("All matching actions are up to date.")

@@ -39,7 +39,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = Path(args.root).resolve()
-    excluded_actions = [p.strip() for p in args.excluded_actions.split(",") if p.strip()]
+    excluded_actions = [
+        p.strip() for p in args.excluded_actions.split(",") if p.strip()
+    ]
     return update_actions(
         root=root,
         file_glob=args.file_glob,
