@@ -9,7 +9,7 @@ This GitHub Action automatically updates Terraform provider dependencies and cre
 > 2. Fetching the latest versions from the Terraform Registry
 > 3. Updating provider version constraints in `.tf` files
 > 4. Running `terraform init -upgrade` to update the `.terraform.lock.hcl`
-> 5. Comparing versions before and after to ensure changes were made
+> 5. Creating a pull request when files in the Terraform working directory changed
 
 ## :rocket: Usage
 
@@ -31,7 +31,6 @@ jobs:
           base-branch: 'main'
           branch-prefix: 'update-terraform-deps'
           working-dir: './terraform'
-          var-file-path: './terraform/terraform.tfvars'
 ```
 
 ## :gear: Inputs
@@ -44,7 +43,7 @@ jobs:
 | `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Terraform Dependencies` |
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update Terraform dependencies` |
 | `working-dir`       | Working directory for Terraform                                                            | :white_check_mark: | -                               |
-| `var-file-path`     | Path to Terraform variables file                                                           | :white_check_mark: | -                               |
+| `var-file-path`     | Deprecated compatibility input; Terraform `init` and `validate` do not use variable files  | :x:                | -                               |
 | `backend-config`    | Backend configuration value for `terraform init -backend-config=`                          | :x:                | -                               |
 | `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                               |
 | `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                         |
@@ -61,25 +60,22 @@ This action performs the following steps:
 4. **Fetch Latest Versions** - Queries the Terraform Registry API for each provider to find the latest available versions
 5. **Update Provider Constraints** - Updates all `.tf` files with new provider version constraints in the `required_providers` block
 6. **Run Terraform Init with Upgrade** - Executes `terraform init -upgrade` to update the `.terraform.lock.hcl` file
-7. **Capture Updated Versions** - Runs `terraform version -json` again to get the updated provider versions
-8. **Terraform Validate** - Validates the Terraform configuration to ensure it's still valid
-9. **Terraform Format** - Formats all `.tf` files using `terraform fmt`
-10. **Check for Changes** - Compares the version snapshots before and after to verify changes were made
-11. **Create Pull Request** - Only creates a PR if version changes were detected
+7. **Terraform Validate** - Validates the Terraform configuration to ensure it's still valid
+8. **Terraform Format** - Formats all `.tf` files using `terraform fmt`
+9. **Check for Changes** - Detects changes in the configured Terraform working directory
+10. **Create Pull Request** - Only creates a PR if files changed
 
 ## :warning: Prerequisites
 
 - Your repository must have Terraform configuration files (`.tf` files)
 - A `.terraform.lock.hcl` file must be present or will be created
 - Provider requirements must be defined in a `required_providers` block in your `.tf` files
-- A valid Terraform variables file must be provided via `var-file-path`
 - The action requires write permissions to create branches and pull requests
 
 ## :bulb: Tips
 
-- The `var-file-path` is required when your Terraform configuration needs variables to initialize successfully
 - The `backend-config` is optional and useful for remote state backends that require additional configuration
 - The action only creates a PR if it detects actual version changes, preventing unnecessary PRs
 - Use `working-dir` to specify the subdirectory containing your Terraform configuration
-- The action uses conservative version constraints (`~> X.Y.Z`) when updating providers
+- The action uses conservative version constraints (`~> X.Y`) when updating providers
 - The action automatically validates and formats your Terraform code before creating the PR

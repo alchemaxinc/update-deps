@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -122,6 +123,39 @@ jobs:
                 )
 
             self.assertEqual(workflow.read_text(encoding="utf-8"), original)
+
+    def test_update_actions_writes_github_output_records(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workflow_dir = root / ".github/workflows"
+            workflow_dir.mkdir(parents=True)
+            workflow = workflow_dir / "ci.yml"
+            workflow.write_text(
+                """
+jobs:
+  build:
+    steps:
+      - uses: actions/checkout@v3
+""",
+                encoding="utf-8",
+            )
+            output_file = root / "github_output"
+
+            with mock.patch(
+                "update_actions.updater.fetch_release_tags",
+                return_value=["v4"],
+            ):
+                with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output_file)}):
+                    updater.update_actions(
+                        root=root,
+                        file_glob=".github/**/*.yml",
+                        excluded_actions=[],
+                        dry_run=False,
+                    )
+
+            output = output_file.read_text(encoding="utf-8")
+            self.assertIn("action_updates<<ENDOFUPDATES", output)
+            self.assertIn("actions/checkout\tv3\tv4", output)
 
     def test_update_actions_excludes_literal_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:

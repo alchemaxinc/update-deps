@@ -11,7 +11,9 @@ def find_uses(obj) -> list[str]:
     """Recursively find all 'uses' values in a YAML structure."""
     found = []
 
-    # Guard: Handle lists
+    # Lists appear throughout workflow YAML (jobs, steps, matrices). Recurse
+    # into every item rather than assuming only jobs.<job>.steps can contain
+    # action references.
     if isinstance(obj, list):
         for item in obj:
             found.extend(find_uses(item))
@@ -21,24 +23,20 @@ def find_uses(obj) -> list[str]:
     if not isinstance(obj, dict):
         return found
 
-    # Process steps if present
-    if isinstance(obj.get("steps"), list):
-        for step in obj["steps"]:
-            if not isinstance(step, dict):
-                continue
-            if isinstance(step.get("uses"), str):
-                found.append(step["uses"])
+    # Reusable workflows use jobs.<job>.uses, while actions use steps[*].uses.
+    # Checking every mapping keeps both shapes covered.
+    if isinstance(obj.get("uses"), str):
+        found.append(obj["uses"])
 
-    # Recurse into all dict values, skipping "steps" (already processed above)
-    for key, value in obj.items():
-        if key == "steps":
-            continue
+    for value in obj.values():
         found.extend(find_uses(value))
 
     return found
 
 
 def get_granularity(version: str) -> Literal["major", "minor", "patch"]:
+    # A leading "v" stays attached to the first part, but only the number of
+    # dot-separated parts matters here.
     parts = version.split(".")
     if len(parts) == 1:
         return "major"
@@ -47,6 +45,19 @@ def get_granularity(version: str) -> Literal["major", "minor", "patch"]:
         return "minor"
 
     return "patch"
+
+
+def granularize_tag(current_tag: str, latest_tag: str) -> str:
+    # Preserve the caller's pinning style: v1 stays major-only, v1.2 stays
+    # minor-only, and v1.2.3 stays patch-specific.
+    granularity = get_granularity(current_tag)
+    if granularity == "major":
+        return latest_tag.split(".")[0]
+
+    if granularity == "minor":
+        return ".".join(latest_tag.split(".")[:2])
+
+    return ".".join(latest_tag.split(".")[:3])
 
 
 def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
@@ -59,31 +70,25 @@ def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
 
     updated = False
 
+    # This mirrors find_uses: lists are containers, mappings may be either
+    # steps or reusable workflow jobs.
     if isinstance(obj, list):
         for item in obj:
             if update_uses_in_structure(item, upgrades):
                 updated = True
         return updated
 
-    # obj is a dict
-    if isinstance(obj.get("steps"), list):
-        for step in obj["steps"]:
-            if not isinstance(step, dict) or not isinstance(step.get("uses"), str):
-                continue
+    # Split on the first "@" only so refs containing "@" later in the string
+    # are left intact after the version/tag boundary.
+    use = obj.get("uses")
+    if isinstance(use, str) and "@" in use:
+        repo, tag = use.split("@", 1)
+        new_tag = upgrades.get((repo, tag))
+        if new_tag:
+            obj["uses"] = f"{repo}@{new_tag}"
+            updated = True
 
-            use = step["uses"]
-            if "@" not in use:
-                continue
-
-            repo, tag = use.split("@", 1)
-            new_tag = upgrades.get((repo, tag))
-            if new_tag:
-                step["uses"] = f"{repo}@{new_tag}"
-                updated = True
-
-    for key, value in obj.items():
-        if key == "steps":
-            continue
+    for value in obj.values():
         if update_uses_in_structure(value, upgrades):
             updated = True
 
@@ -113,6 +118,8 @@ def find_uses_in_file(path: Path) -> tuple[list[str], str]:
     for doc in docs:
         if doc is None:
             continue
+        # Multi-document YAML is unusual for workflows, but load_all keeps the
+        # scanner safe for action.yml and other YAML files matched by file-glob.
         uses.extend(find_uses(doc))
     return uses, text
 
@@ -127,6 +134,9 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
     Apply updates to a YAML workflow file by doing targeted text replacements.
     This preserves all original formatting and comments, only modifying the 'uses:' lines.
     """
+    # Do not dump the parsed YAML back out: even ruamel can alter comments,
+    # indentation, or multiline run blocks. The parser is used for discovery;
+    # the actual write path is intentionally line-based and narrow.
     lines = text.split("\n")
 
     for i, line in enumerate(lines):
@@ -141,41 +151,58 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
         if uses_idx == -1:
             continue
 
-        # Guard: Validate prefix is either empty or a dash
+        # Guard: Validate prefix is either empty or a dash. That allows both
+        # "uses:" and "- uses:" while skipping keys such as "reuses:" or
+        # arbitrary text in shell scripts.
         prefix = stripped[:uses_idx].strip()
         if prefix and prefix != "-":
             continue
 
-        # Extract indentation and value parts
+        # Keep the original indentation and list marker style so the updated
+        # line has the smallest possible diff.
         indent = line[: len(line) - len(stripped)]
         rest = stripped[uses_idx + 5 :].strip()
 
-        # Parse value and comment
+        # Split off inline comments without treating "#" inside quotes as a
+        # comment marker, so quoted action refs and comments round-trip cleanly.
         comment = ""
         value_part = rest
-        if "#" in rest:
-            parts = rest.split("#", 1)
-            value_part = parts[0].strip()
-            comment = "#" + parts[1]
+        quote = ""
+        in_quote = None
+        for char_index, char in enumerate(rest):
+            if char in ("'", '"'):
+                if in_quote is None:
+                    in_quote = char
+                elif in_quote == char:
+                    in_quote = None
+            elif char == "#" and in_quote is None:
+                value_part = rest[:char_index].strip()
+                comment = rest[char_index:]
+                break
 
-        # Check if this value matches any upgrade
+        # Store and strip quotes for comparison, then add them back around the
+        # updated value to avoid unnecessary formatting churn.
+        if (
+            len(value_part) >= 2
+            and value_part[0] in ("'", '"')
+            and value_part[-1] == value_part[0]
+        ):
+            quote = value_part[0]
+            value_part = value_part[1:-1]
+
+        # Match the whole uses value exactly. This prevents updating strings
+        # that merely contain an action ref as a substring.
         for (repo, current_tag), new_tag in upgrades.items():
             old_value = f"{repo}@{current_tag}"
             if value_part != old_value:
                 continue
 
-            # Granularize new_tag to match current_tag's granularity
-            granularity = get_granularity(current_tag)
-            if granularity == "major":
-                new_tag_granularized = new_tag.split(".")[0]
-            elif granularity == "minor":
-                new_tag_granularized = ".".join(new_tag.split(".")[:2])
-            else:
-                new_tag_granularized = ".".join(new_tag.split(".")[:3])
-
+            new_tag_granularized = granularize_tag(current_tag, new_tag)
             new_value = f"{repo}@{new_tag_granularized}"
+            if quote:
+                new_value = f"{quote}{new_value}{quote}"
 
-            # Reconstruct line with proper formatting
+            # Reconstruct line with proper formatting and the original comment.
             prefix_str = "- " if stripped.startswith("- ") else ""
             comment_str = f" {comment}" if comment else ""
             lines[i] = f"{indent}{prefix_str}uses: {new_value}{comment_str}"

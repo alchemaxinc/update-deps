@@ -6,7 +6,7 @@ This GitHub Action automatically updates the Rust toolchain version and Cargo de
 > This action requires a `rust-toolchain.toml` file in the repository root. This file serves as the single source of truth for the Rust version used across the project — including CI workflows, Dockerfiles, and any other tooling. The action reads and updates the `channel` field in this file.
 
 > [!NOTE]
-> Cargo dependency updates use `cargo update`, which updates `Cargo.lock` to the latest versions allowed by the semver constraints in `Cargo.toml`. This means it will not introduce breaking changes beyond what your version constraints allow. To update to new major versions, you would need to manually bump the constraints in `Cargo.toml`.
+> Cargo dependency updates bump direct dependency version requirements in `Cargo.toml` to the latest stable crates.io versions, then run `cargo update` to refresh each matching `Cargo.lock`. Review these changes carefully because version requirement bumps can include new major versions.
 
 ## :rocket: Usage
 
@@ -72,7 +72,7 @@ The action fetches the latest stable Rust release from the GitHub API and compar
 
 ### Dependency Updates
 
-The action auto-discovers all `Cargo.toml` files in the repository (excluding `target/` directories) and runs `cargo update` for each. This updates `Cargo.lock` files to the latest compatible versions within the existing semver constraints.
+The action auto-discovers all `Cargo.toml` files in the repository (excluding `target/` directories), updates direct dependency version requirements to the latest stable crates.io versions, and runs `cargo update` for each manifest. This refreshes matching `Cargo.lock` files after the manifest changes.
 
 ## :warning: Prerequisites
 

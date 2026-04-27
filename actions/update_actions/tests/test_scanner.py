@@ -31,6 +31,11 @@ class TestScanner(unittest.TestCase):
                 result = scanner.get_granularity(version)
                 self.assertEqual(result, expected)
 
+    def test_granularize_tag(self):
+        self.assertEqual(scanner.granularize_tag("v1", "v2.3.4"), "v2")
+        self.assertEqual(scanner.granularize_tag("v1.2", "v2.3.4"), "v2.3")
+        self.assertEqual(scanner.granularize_tag("v1.2.3", "v2.3.4"), "v2.3.4")
+
     def test_find_uses_nested(self):
         data = {
             "jobs": {
@@ -40,12 +45,19 @@ class TestScanner(unittest.TestCase):
                         {"run": "echo hi"},
                     ],
                     "other": [{"steps": [{"uses": "actions/cache@v3"}]}],
-                }
+                },
+                "reusable": {
+                    "uses": "owner/reusable/.github/workflows/ci.yml@v1",
+                },
             }
         }
         self.assertEqual(
             scanner.find_uses(data),
-            ["actions/checkout@v4", "actions/cache@v3"],
+            [
+                "actions/checkout@v4",
+                "actions/cache@v3",
+                "owner/reusable/.github/workflows/ci.yml@v1",
+            ],
         )
 
     def test_find_uses_in_file_invalid_yaml(self):
@@ -66,6 +78,26 @@ class TestScanner(unittest.TestCase):
         updated = scanner.apply_updates(text, upgrades)
         self.assertIn("actions/checkout@v4", updated)
         self.assertIn("org/tool@1.2.3", updated)
+
+    def test_apply_updates_preserves_quotes_and_comments(self):
+        text = """
+        jobs:
+          reusable:
+            uses: "owner/workflows/.github/workflows/ci.yml@v1" # reusable workflow
+          build:
+            steps:
+              - uses: 'actions/checkout@v3'
+        """
+        upgrades = {
+            ("owner/workflows/.github/workflows/ci.yml", "v1"): "v2",
+            ("actions/checkout", "v3"): "v4",
+        }
+        updated = scanner.apply_updates(text, upgrades)
+        self.assertIn(
+            'uses: "owner/workflows/.github/workflows/ci.yml@v2" # reusable workflow',
+            updated,
+        )
+        self.assertIn("uses: 'actions/checkout@v4'", updated)
 
     def test_collect_workflow_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:

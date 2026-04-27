@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from update_actions.github_api import fetch_release_tags
@@ -7,6 +8,7 @@ from update_actions.scanner import (
     apply_updates,
     collect_workflow_files,
     find_uses_in_file,
+    granularize_tag,
 )
 from update_actions.versioning import parse_version, select_latest_tag
 
@@ -51,6 +53,7 @@ def update_actions(
         return 0
 
     upgrades: dict[tuple[str, str], str] = {}
+    update_records: list[tuple[str, str, str]] = []
     release_tags_cache: dict[str, list[str]] = {}
     for action_ref, release_repo, current_tag in filtered_uses:
         current_version = parse_version(current_tag)
@@ -71,6 +74,9 @@ def update_actions(
             upgrade_key = (action_ref, current_tag)
             if upgrade_key not in upgrades:
                 upgrades[upgrade_key] = latest_tag
+                update_records.append(
+                    (action_ref, current_tag, granularize_tag(current_tag, latest_tag))
+                )
                 print(
                     f"::notice::Updated {action_ref} from {current_tag} to {latest_tag}"
                 )
@@ -95,5 +101,13 @@ def update_actions(
 
     if dry_run:
         print(f"Dry run complete. Files with updates: {changes}")
+
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write("action_updates<<ENDOFUPDATES\n")
+            for action_ref, current_tag, new_tag in update_records:
+                output.write(f"{action_ref}\t{current_tag}\t{new_tag}\n")
+            output.write("ENDOFUPDATES\n")
 
     return 0

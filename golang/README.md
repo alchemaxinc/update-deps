@@ -57,8 +57,10 @@ Updates direct dependencies and their transitive dependencies while respecting v
 Updates only direct dependencies (those explicitly listed in `go.mod`) to their latest versions, ignoring indirect dependencies.
 
 ```bash
-go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all \
-  | xargs -n1 go get -u
+while IFS= read -r module; do
+  [ -z "$module" ] && continue
+  go get -u "$module"
+done < <(go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)
 ```
 
 **Best for:** When you want to update only the dependencies you directly control.
@@ -68,9 +70,11 @@ go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all \
 Updates all dependencies, including indirect ones, to their latest available versions. This is the most aggressive strategy and may introduce breaking changes.
 
 ```bash
-go list -m -u all \
-  | awk '/\[/ { print $1 "@" substr($2,2,length($2)-2) }' \
-  | xargs -n1 go get
+while IFS= read -r module; do
+  [ -z "$module" ] && continue
+  go get "$module"
+done < <(go list -m -u all \
+  | awk '$NF ~ /^\[v/ { print $1 "@" substr($NF, 2, length($NF) - 2) }')
 ```
 
 **Best for:** When you want the absolute latest versions and are willing to handle breaking changes.

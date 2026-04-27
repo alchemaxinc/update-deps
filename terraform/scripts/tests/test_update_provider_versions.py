@@ -14,6 +14,52 @@ class TestUpdateProviderVersions(unittest.TestCase):
             workdir = Path(tmpdir)
             versions_path = workdir / "versions.json"
             tf_path = workdir / "main.tf"
+            output_file = workdir / "github_output"
+
+            versions_path.write_text(
+                json.dumps(
+                    {
+                        "provider_selections": {
+                            "registry.terraform.io/hashicorp/aws": "5.0.0"
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            tf_path.write_text(
+                """
+                terraform {
+                  required_providers {
+                    aws = {
+                      source  = "hashicorp/aws"
+                      version = "~> 5.0"
+                    }
+                  }
+                }
+                """,
+                encoding="utf-8",
+            )
+
+            mock_result = mock.Mock(returncode=0, stdout='{"version": "5.2.1"}')
+            with mock.patch.object(module.subprocess, "run", return_value=mock_result):
+                with mock.patch.dict("os.environ", {"GITHUB_OUTPUT": str(output_file)}):
+                    with mock.patch.object(
+                        sys, "argv", ["script", str(workdir), str(versions_path)]
+                    ):
+                        module.main()
+
+            updated = tf_path.read_text(encoding="utf-8")
+            output = output_file.read_text(encoding="utf-8")
+            self.assertIn('version = "~> 5.2"', updated)
+            self.assertIn("provider_updates<<ENDOFUPDATES", output)
+            self.assertIn("hashicorp/aws\t~> 5.0\t~> 5.2\tmain.tf", output)
+
+    def test_updates_version_constraints_without_github_output(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = Path(tmpdir)
+            versions_path = workdir / "versions.json"
+            tf_path = workdir / "main.tf"
 
             versions_path.write_text(
                 json.dumps(
