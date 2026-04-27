@@ -227,9 +227,7 @@ class TestMain(unittest.TestCase):
 
             output = output_file.read_text(encoding="utf-8")
             self.assertIn("dep_updates", output)
-            self.assertIn("serde", output)
-            self.assertIn("1.0.0", output)
-            self.assertIn("1.0.228", output)
+            self.assertIn(f"serde\t1.0.0\t1.0.228\t{manifest}", output)
 
     def test_no_output_when_no_updates(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -41,6 +41,17 @@ def get_granularity(version: str) -> Literal["major", "minor", "patch"]:
     return "patch"
 
 
+def granularize_tag(current_tag: str, latest_tag: str) -> str:
+    granularity = get_granularity(current_tag)
+    if granularity == "major":
+        return latest_tag.split(".")[0]
+
+    if granularity == "minor":
+        return ".".join(latest_tag.split(".")[:2])
+
+    return ".".join(latest_tag.split(".")[:3])
+
+
 def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
     """
     Recursively update 'uses' values in a YAML structure.
@@ -162,15 +173,7 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
             if value_part != old_value:
                 continue
 
-            # Granularize new_tag to match current_tag's granularity
-            granularity = get_granularity(current_tag)
-            if granularity == "major":
-                new_tag_granularized = new_tag.split(".")[0]
-            elif granularity == "minor":
-                new_tag_granularized = ".".join(new_tag.split(".")[:2])
-            else:
-                new_tag_granularized = ".".join(new_tag.split(".")[:3])
-
+            new_tag_granularized = granularize_tag(current_tag, new_tag)
             new_value = f"{repo}@{new_tag_granularized}"
             if quote:
                 new_value = f"{quote}{new_value}{quote}"

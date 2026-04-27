@@ -31,6 +31,11 @@ class TestScanner(unittest.TestCase):
                 result = scanner.get_granularity(version)
                 self.assertEqual(result, expected)
 
+    def test_granularize_tag(self):
+        self.assertEqual(scanner.granularize_tag("v1", "v2.3.4"), "v2")
+        self.assertEqual(scanner.granularize_tag("v1.2", "v2.3.4"), "v2.3")
+        self.assertEqual(scanner.granularize_tag("v1.2.3", "v2.3.4"), "v2.3.4")
+
     def test_find_uses_nested(self):
         data = {
             "jobs": {

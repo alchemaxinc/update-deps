@@ -29,6 +29,9 @@ jobs:
           - name: Cargo
             directory: cargo
             has-requirements: false
+          - name: Shared Scripts
+            directory: shared
+            has-requirements: false
     steps:
       - &checkout-code
         name: Checkout code

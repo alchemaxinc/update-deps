@@ -113,6 +113,7 @@ def main():
                 tf_files.append(os.path.join(root, file))
 
     logging.info("Found %d .tf files", len(tf_files))
+    all_updates = []
 
     for tf_file in tf_files:
         # Initialize content to satisfy static analyzers in all code paths
@@ -157,10 +158,10 @@ def main():
                 rf"[^}}]*source\s*=\s*[\"\']"
                 + re.escape(name)
                 + r"[\"\']"  # source = "registry/name"
-                rf"[^}}]*version\s*=\s*[\"\'])[^\"\']+([\"\'])"
+                rf"[^}}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
             )
 
-            replacement = f"\\g<1>{new_version_constraint}\\g<2>"
+            replacement = f"\\g<1>{new_version_constraint}\\g<3>"
             new_content = re.sub(
                 pattern, replacement, content, flags=re.MULTILINE | re.DOTALL
             )
@@ -169,14 +170,36 @@ def main():
                 logging.debug("No match found for %s in %s", name, tf_file)
                 continue
 
+            old_constraint_match = re.search(
+                pattern, content, flags=re.MULTILINE | re.DOTALL
+            )
+            old_constraint = old_constraint_match.group(2)
             content = new_content
+            all_updates.append(
+                {
+                    "provider": name,
+                    "old": old_constraint,
+                    "new": new_version_constraint,
+                    "file": os.path.relpath(tf_file, working_dir),
+                }
+            )
             print(
-                f"::notice::Updated {name} from {provider_info['current']} to {new_version_constraint}"
+                f"::notice::Updated {name} from {old_constraint} to {new_version_constraint}"
             )
 
         if content != original_content:
             with open(tf_file, "w", encoding="utf-8") as wf:
                 wf.write(content)
+
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output and all_updates:
+        with open(github_output, "a", encoding="utf-8") as output:
+            output.write("provider_updates<<ENDOFUPDATES\n")
+            for update in all_updates:
+                output.write(
+                    f"{update['provider']}\t{update['old']}\t{update['new']}\t{update['file']}\n"
+                )
+            output.write("ENDOFUPDATES\n")
 
     logging.info("Provider updates complete")
 

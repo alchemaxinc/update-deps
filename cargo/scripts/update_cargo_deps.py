@@ -139,15 +139,12 @@ def main():
 
     github_output = os.environ.get("GITHUB_OUTPUT")
     if github_output and all_updates:
-        table = "| Crate | Old | New | Manifest |\n"
-        table += "| --- | --- | --- | --- |\n"
+        records = ""
         for u in all_updates:
-            table += (
-                f"| `{u['name']}` | `{u['old']}` | `{u['new']}` | `{u['manifest']}` |\n"
-            )
+            records += f"{u['name']}\t{u['old']}\t{u['new']}\t{u['manifest']}\n"
 
         with open(github_output, "a") as f:
-            f.write(f"dep_updates<<ENDOFUPDATES\n{table}ENDOFUPDATES\n")
+            f.write(f"dep_updates<<ENDOFUPDATES\n{records}ENDOFUPDATES\n")
 
     if not all_updates:
         print("::notice::All Cargo dependencies are up to date")
