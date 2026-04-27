@@ -111,7 +111,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         with:
           owner: ${{ github.repository_owner }}
-          app-id: ${{ vars.BOT_APP_ID }}
+          client-id: ${{ vars.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
 
       - name: Setup Python
