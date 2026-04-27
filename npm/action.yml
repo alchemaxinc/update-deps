@@ -120,18 +120,28 @@ runs:
       if: steps.check_existing_pr.outputs.exists != 'true'
       id: check_updates
       shell: bash
+      env:
+        EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
+        RELOCK: ${{ inputs.relock }}
       run: |
         export PATH=~/.npm-global/bin:$PATH
-        ncu_output=$(ncu --reject "${{ inputs.excluded-packages }}" 2>/dev/null || true)
+        ncu_output=$(ncu --reject "$EXCLUDED_PACKAGES" 2>/dev/null || true)
         update_lines=$(echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' || true)
 
         if [ -z "$update_lines" ]; then
-          echo "::notice::No updates available, stopping"
           echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          if [ "$RELOCK" = "true" ]; then
+            echo "::notice::No package updates available; relocking package-lock.json"
+            echo "should_install=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No updates available, stopping"
+            echo "should_install=false" >> "$GITHUB_OUTPUT"
+          fi
           exit 0
         fi
 
         echo "has_updates=true" >> "$GITHUB_OUTPUT"
+        echo "should_install=true" >> "$GITHUB_OUTPUT"
         {
           echo "update_lines<<ENDOFLINES"
           echo "$update_lines"
@@ -141,9 +151,11 @@ runs:
     - name: Apply updates to package.json
       if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
+      env:
+        EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
       run: |
         export PATH=~/.npm-global/bin:$PATH
-        ncu -u --reject "${{ inputs.excluded-packages }}"
+        ncu -u --reject "$EXCLUDED_PACKAGES"
 
     - name: Categorize updates by semver change
       id: categorize
@@ -196,15 +208,20 @@ runs:
 
     - name: Build PR description
       id: build_pr_body
-      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      if: steps.check_updates.outputs.should_install == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       env:
+        HAS_UPDATES: ${{ steps.check_updates.outputs.has_updates }}
         MAJOR_UPDATES: ${{ steps.categorize.outputs.major }}
         MINOR_UPDATES: ${{ steps.categorize.outputs.minor }}
         PATCH_UPDATES: ${{ steps.categorize.outputs.patch }}
       run: |
         pr_body="# :arrows_counterclockwise: NPM Dependencies Update"
         pr_body+=$'\n'
+
+        if [ "$HAS_UPDATES" != "true" ]; then
+          pr_body+=$'\n'"Regenerated \`package-lock.json\` without package version changes."
+        fi
 
         if [ -n "$MAJOR_UPDATES" ]; then
           pr_body+=$'\n'"## :boom: Major Updates (Breaking Changes)"
@@ -244,10 +261,12 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Install updated dependencies
-      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      if: steps.check_updates.outputs.should_install == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
+      env:
+        RELOCK: ${{ inputs.relock }}
       run: |
-        if [ "${{ inputs.relock }}" = "true" ]; then
+        if [ "$RELOCK" = "true" ]; then
           rm -f package-lock.json
         fi
         npm install

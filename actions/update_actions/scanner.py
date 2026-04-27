@@ -21,18 +21,10 @@ def find_uses(obj) -> list[str]:
     if not isinstance(obj, dict):
         return found
 
-    # Process steps if present
-    if isinstance(obj.get("steps"), list):
-        for step in obj["steps"]:
-            if not isinstance(step, dict):
-                continue
-            if isinstance(step.get("uses"), str):
-                found.append(step["uses"])
+    if isinstance(obj.get("uses"), str):
+        found.append(obj["uses"])
 
-    # Recurse into all dict values, skipping "steps" (already processed above)
-    for key, value in obj.items():
-        if key == "steps":
-            continue
+    for value in obj.values():
         found.extend(find_uses(value))
 
     return found
@@ -65,25 +57,15 @@ def update_uses_in_structure(obj, upgrades: dict[tuple[str, str], str]) -> bool:
                 updated = True
         return updated
 
-    # obj is a dict
-    if isinstance(obj.get("steps"), list):
-        for step in obj["steps"]:
-            if not isinstance(step, dict) or not isinstance(step.get("uses"), str):
-                continue
+    use = obj.get("uses")
+    if isinstance(use, str) and "@" in use:
+        repo, tag = use.split("@", 1)
+        new_tag = upgrades.get((repo, tag))
+        if new_tag:
+            obj["uses"] = f"{repo}@{new_tag}"
+            updated = True
 
-            use = step["uses"]
-            if "@" not in use:
-                continue
-
-            repo, tag = use.split("@", 1)
-            new_tag = upgrades.get((repo, tag))
-            if new_tag:
-                step["uses"] = f"{repo}@{new_tag}"
-                updated = True
-
-    for key, value in obj.items():
-        if key == "steps":
-            continue
+    for value in obj.values():
         if update_uses_in_structure(value, upgrades):
             updated = True
 
@@ -153,10 +135,26 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
         # Parse value and comment
         comment = ""
         value_part = rest
-        if "#" in rest:
-            parts = rest.split("#", 1)
-            value_part = parts[0].strip()
-            comment = "#" + parts[1]
+        quote = ""
+        in_quote = None
+        for char_index, char in enumerate(rest):
+            if char in ("'", '"'):
+                if in_quote is None:
+                    in_quote = char
+                elif in_quote == char:
+                    in_quote = None
+            elif char == "#" and in_quote is None:
+                value_part = rest[:char_index].strip()
+                comment = rest[char_index:]
+                break
+
+        if (
+            len(value_part) >= 2
+            and value_part[0] in ("'", '"')
+            and value_part[-1] == value_part[0]
+        ):
+            quote = value_part[0]
+            value_part = value_part[1:-1]
 
         # Check if this value matches any upgrade
         for (repo, current_tag), new_tag in upgrades.items():
@@ -174,6 +172,8 @@ def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
                 new_tag_granularized = ".".join(new_tag.split(".")[:3])
 
             new_value = f"{repo}@{new_tag_granularized}"
+            if quote:
+                new_value = f"{quote}{new_value}{quote}"
 
             # Reconstruct line with proper formatting
             prefix_str = "- " if stripped.startswith("- ") else ""

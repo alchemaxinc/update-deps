@@ -95,6 +95,21 @@ runs:
         cache: true
         cache-dependency-path: '**/go.sum'
 
+    - name: Validate update strategy
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      env:
+        STRATEGY: ${{ inputs.strategy }}
+      run: |
+        case "$STRATEGY" in
+          controlled|direct|everything)
+            ;;
+          *)
+            echo "::error::Invalid strategy '$STRATEGY'. Expected one of: controlled, direct, everything."
+            exit 1
+            ;;
+        esac
+
     - name: Update dependencies (controlled)
       if: inputs.strategy == 'controlled' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
@@ -111,7 +126,7 @@ runs:
         # Output notices for updated packages
         while IFS= read -r line; do
           pkg=$(echo "$line" | cut -d'@' -f1)
-          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          old_ver=$(printf "%s\n" "$before" | awk -F@ -v pkg="$pkg" '$1 == pkg { print $2; exit }')
           new_ver=$(echo "$line" | cut -d'@' -f2)
           if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
             echo "::notice::Updated $pkg from $old_ver to $new_ver"
@@ -125,8 +140,10 @@ runs:
         # Capture current direct dependencies
         before=$(go list -m -f '{{if not .Indirect}}{{.Path}}@{{.Version}}{{end}}' all | sort)
 
-        go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all \
-          | xargs -n1 go get -u
+        while IFS= read -r module; do
+          [ -z "$module" ] && continue
+          go get -u "$module"
+        done < <(go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)
         go mod tidy
 
         # Compare with updated dependencies
@@ -135,7 +152,7 @@ runs:
         # Output notices for updated packages
         while IFS= read -r line; do
           pkg=$(echo "$line" | cut -d'@' -f1)
-          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          old_ver=$(printf "%s\n" "$before" | awk -F@ -v pkg="$pkg" '$1 == pkg { print $2; exit }')
           new_ver=$(echo "$line" | cut -d'@' -f2)
           if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
             echo "::notice::Updated $pkg from $old_ver to $new_ver"
@@ -149,9 +166,11 @@ runs:
         # Capture current all dependencies
         before=$(go list -m -f '{{.Path}}@{{.Version}}' all | sort)
 
-        go list -m -u all \
-          | awk '$NF ~ /^\[v/ { v=$NF; gsub(/[\[\]]/, "", v); print $1 "@" v }' \
-          | xargs -n1 go get
+        while IFS= read -r module; do
+          [ -z "$module" ] && continue
+          go get "$module"
+        done < <(go list -m -u all \
+          | awk '$NF ~ /^\[v/ { print $1 "@" substr($NF, 2, length($NF) - 2) }')
         go mod tidy
 
         # Compare with updated dependencies
@@ -160,7 +179,7 @@ runs:
         # Output notices for updated packages
         while IFS= read -r line; do
           pkg=$(echo "$line" | cut -d'@' -f1)
-          old_ver=$(echo "$before" | grep "^${pkg}@" | cut -d'@' -f2 || echo "")
+          old_ver=$(printf "%s\n" "$before" | awk -F@ -v pkg="$pkg" '$1 == pkg { print $2; exit }')
           new_ver=$(echo "$line" | cut -d'@' -f2)
           if [ -n "$old_ver" ] && [ "$old_ver" != "$new_ver" ]; then
             echo "::notice::Updated $pkg from $old_ver to $new_ver"

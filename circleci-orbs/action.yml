@@ -118,40 +118,45 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        CONFIG_FILE: ${{ inputs.circleci-config-file }}
       run: |
-        CONFIG_FILE="${{ inputs.circleci-config-file }}"
-
         # Read orbs from config.yml
-        orbs=$(yq eval '.orbs | keys | .[]' "$CONFIG_FILE")
+        orbs=$(yq eval '.orbs // {} | keys | .[]' "$CONFIG_FILE")
 
         for orb in $orbs; do
           echo "::debug::Processing orb: $orb"
 
           # Capture the old orb value (namespace@version)
-          old_value=$(yq eval ".orbs.$orb" "$CONFIG_FILE")
+          old_value=$(ORB="$orb" yq eval '.orbs[env(ORB)]' "$CONFIG_FILE")
+          if [[ "$old_value" != *@* ]]; then
+            echo "::warning::Skipping $orb because '$old_value' is not a versioned orb reference"
+            continue
+          fi
 
           # Get the orb namespace (e.g., "circleci/aws-cli" from "circleci/aws-cli@5.3.5")
           orb_full_name=$(echo "$old_value" | cut -d'@' -f1)
-          
+          orb_repo_name="${orb_full_name##*/}"
+
           # Get the current version
           current_version=$(echo "$old_value" | cut -d'@' -f2)
 
           # Get latest tag from GitHub
-          latest_tag=$(gh api repos/CircleCI-Public/${orb}-orb/releases/latest --jq '.tag_name' | sed 's/^v//')
+          latest_tag=$(gh api "repos/CircleCI-Public/${orb_repo_name}-orb/releases/latest" --jq '.tag_name' | sed 's/^v//')
 
           if [ -z "$latest_tag" ]; then
-            echo "::error::Could not find latest tag for ${orb}-orb, failing"
+            echo "::error::Could not find latest tag for ${orb_repo_name}-orb, failing"
             exit 1
           fi
 
           echo "::debug::Latest version: $latest_tag"
 
           if [ "$current_version" != "$latest_tag" ]; then
-            sed -i "s|\($orb_full_name@\)[^\"' ]*|\1$latest_tag|" "$CONFIG_FILE"
+            new_value="${orb_full_name}@${latest_tag}"
+            ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
             echo "::notice::Updated $orb from $current_version to $latest_tag"
+          else
+            echo "::debug::$orb is already at latest version $latest_tag"
           fi
-
-          echo "::debug::$orb is already at latest version $latest_tag"
         done
 
     - name: Check for changes
