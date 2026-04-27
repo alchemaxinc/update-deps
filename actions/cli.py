@@ -21,9 +21,12 @@ def parse_args() -> argparse.Namespace:
         help="Glob (relative to root) for workflow files.",
     )
     parser.add_argument(
-        "--prefixes",
-        default="actions",
-        help="Comma-separated list of action prefixes to include.",
+        "--excluded-actions",
+        default="",
+        help=(
+            "Comma-separated list of action owners, repositories, or paths to "
+            "exclude. Values are matched literally, not as regex."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -36,11 +39,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = Path(args.root).resolve()
-    prefixes = [p.strip() for p in args.prefixes.split(",") if p.strip()]
+    excluded_actions = [
+        p.strip() for p in args.excluded_actions.split(",") if p.strip()
+    ]
     return update_actions(
         root=root,
         file_glob=args.file_glob,
-        prefixes=prefixes,
+        excluded_actions=excluded_actions,
         dry_run=args.dry_run,
     )
 

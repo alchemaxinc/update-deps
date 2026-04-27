@@ -38,9 +38,11 @@ jobs:
 | `pr-title`          | Title for the pull request                                                                 | :x:                | `Update NPM Dependencies` |
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update NPM dependencies` |
 | `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                         |
-| `relock`            | Wether `package-lock.json` should be regenerated                                           | :x:                | `false`                   |
-| `auto-merge`        | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                   |
+| `relock`            | Whether `package-lock.json` should be regenerated                                          | :x:                | `false`                   |
+| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
+| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
 | `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
+| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 

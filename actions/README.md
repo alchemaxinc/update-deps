@@ -1,7 +1,7 @@
 # Update GitHub Actions :arrows_counterclockwise:
 
-This GitHub Action scans `.github` workflows, finds `uses:` entries that match configured prefixes, compares them to the
-latest GitHub releases, and updates them when newer versions exist.
+This GitHub Action scans `.github` workflows, finds external `uses:` entries, compares them to the latest GitHub
+releases, and updates them when newer versions exist.
 
 ## :rocket: Usage
 
@@ -25,14 +25,18 @@ jobs:
           pr-title: 'Update GitHub Actions'
           commit-message: 'Update GitHub Actions'
           file-glob: '.github/**/*.yml'
-          prefixes: 'actions'
+          excluded-actions: 'docker,owner/legacy-action'
 ```
 
 ## :computer: Local CLI
 
 ```bash
-python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --prefixes 'actions'
+python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --excluded-actions 'docker,owner/legacy-action'
 ```
+
+By default, the action updates all external GitHub Actions with semver-like tags. Use `excluded-actions` to skip specific
+actions. Exclusions are comma-separated literal values, not regex or glob patterns. Each value can be an owner
+(`actions`), repository (`actions/checkout`), or action path (`owner/repo/path/to/action`).
 
 ## :gear: Inputs
 
@@ -44,9 +48,12 @@ python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --prefixes 'ac
 | `pr-title`          | Title for the pull request                                                                 | :x:                | `Update GitHub Actions` |
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update GitHub Actions` |
 | `file-glob`         | Glob for workflow files (relative to repo root)                                            | :x:                | `.github/**/*.yml`      |
-| `prefixes`          | Comma-separated list of action prefixes to include                                         | :x:                | `actions`               |
-| `auto-merge`        | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                 |
+| `check-files`       | Path/glob used to detect and include changed files in the PR                               | :x:                | `.github`               |
+| `excluded-actions`  | Comma-separated literal action owners, repositories, or paths to exclude                   | :x:                | -                       |
+| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                       |
+| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                 |
 | `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                 |
+| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                 |
 
 ## :warning: Prerequisites
 
