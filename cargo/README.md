@@ -57,10 +57,12 @@ jobs:
 | `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`       |
 | `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Cargo Dependencies` |
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update Cargo dependencies` |
+| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                           |
 | `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                     |
 | `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                     |
 | `update-toolchain`  | Whether to update the Rust toolchain version                                               | :x:                | `true`                      |
 | `update-deps`       | Whether to update Cargo dependencies                                                       | :x:                | `true`                      |
+| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                     |
 
 ## :mag: How It Works
 

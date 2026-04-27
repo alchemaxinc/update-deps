@@ -38,10 +38,10 @@ inputs:
     description: 'Path/glob used to detect and include changed files in the PR'
     default: '.github'
 
-  prefixes:
+  excluded-actions:
     required: false
-    description: 'Comma-separated list of action prefixes to include'
-    default: 'actions'
+    description: 'Comma-separated list of action owners, repositories, or paths to exclude. Values are literal, not regex.'
+    default: ''
 
   app-slug:
     required: false
@@ -120,7 +120,7 @@ runs:
         python ${{ github.action_path }}/cli.py \
           --root "$GITHUB_WORKSPACE" \
           --file-glob "${{ inputs.file-glob }}" \
-          --prefixes "${{ inputs.prefixes }}"
+          --excluded-actions "${{ inputs.excluded-actions }}"
 
     - name: Check for changes
       id: check_changes

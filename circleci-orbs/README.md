@@ -42,8 +42,10 @@ jobs:
 | `commit-message`       | Commit message for the update                                                              | :x:                | `Update CircleCI orbs` |
 | `circleci-config-file` | Path to CircleCI config file                                                               | :x:                | `.circleci/config.yml` |
 | `yq-version`           | Version of yq tool to use                                                                  | :x:                | `v4.44.1`              |
-| `auto-merge`           | Wether automatic merge should be enabled for the PR                                        | :x:                | `false`                |
+| `app-slug`             | GitHub App slug for commit attribution                                                     | :x:                | -                      |
+| `auto-merge`           | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                |
 | `skip-if-pr-exists`    | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                |
+| `dry-run`              | Run without creating a PR                                                                  | :x:                | `false`                |
 
 ## :warning: Prerequisites
 
