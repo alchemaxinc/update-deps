@@ -34,6 +34,11 @@ class TestBuildUpdatePrBody(unittest.TestCase):
             )
 
         self.assertIn("## Major Updates", body)
+        self.assertIn(
+            "> :warning: **These updates may contain breaking changes. Please review carefully!**\n\n"
+            "| Package | Old | New |",
+            body,
+        )
         self.assertIn("| `major-lib` | `1.0.0` | `2.0.0` |", body)
         self.assertIn("## Minor Updates", body)
         self.assertIn("## Patch Updates", body)
