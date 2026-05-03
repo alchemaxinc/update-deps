@@ -157,6 +157,52 @@ jobs:
             self.assertIn("action_updates<<ENDOFUPDATES", output)
             self.assertIn("actions/checkout\tv3\tv4", output)
 
+    def test_update_actions_skips_same_granularity_updates(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            workflow_dir = root / ".github/workflows"
+            workflow_dir.mkdir(parents=True)
+            workflow = workflow_dir / "ci.yml"
+            original = """
+jobs:
+  build:
+    steps:
+      - uses: actions/cache@v5
+      - uses: actions/checkout@v5.1
+      - uses: dorny/test-reporter@v2
+"""
+            workflow.write_text(original, encoding="utf-8")
+            output_file = root / "github_output"
+
+            def fetch_release_tags(repo):
+                return {
+                    "actions/cache": ["v5.3.0"],
+                    "actions/checkout": ["v5.1.3"],
+                    "dorny/test-reporter": ["v3.0.0"],
+                }[repo]
+
+            with mock.patch(
+                "update_actions.updater.fetch_release_tags",
+                side_effect=fetch_release_tags,
+            ):
+                with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output_file)}):
+                    updater.update_actions(
+                        root=root,
+                        file_glob=".github/**/*.yml",
+                        excluded_actions=[],
+                        dry_run=False,
+                    )
+
+            updated = workflow.read_text(encoding="utf-8")
+            self.assertIn("actions/cache@v5", updated)
+            self.assertIn("actions/checkout@v5.1", updated)
+            self.assertIn("dorny/test-reporter@v3", updated)
+
+            output = output_file.read_text(encoding="utf-8")
+            self.assertIn("dorny/test-reporter\tv2\tv3", output)
+            self.assertNotIn("actions/cache\tv5\tv5", output)
+            self.assertNotIn("actions/checkout\tv5.1\tv5.1", output)
+
     def test_update_actions_excludes_literal_owner(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

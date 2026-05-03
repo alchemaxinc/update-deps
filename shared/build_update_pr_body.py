@@ -106,6 +106,7 @@ def build_body(
             section.extend(
                 [
                     "> :warning: **These updates may contain breaking changes. Please review carefully!**",
+                    "",
                 ]
             )
         section.extend([header, separator])

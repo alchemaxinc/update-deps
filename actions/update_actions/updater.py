@@ -71,15 +71,15 @@ def update_actions(
 
         latest_version = parse_version(latest_tag)
         if latest_version and latest_version > current_version:
+            new_tag = granularize_tag(current_tag, latest_tag)
+            if new_tag == current_tag:
+                continue
+
             upgrade_key = (action_ref, current_tag)
             if upgrade_key not in upgrades:
                 upgrades[upgrade_key] = latest_tag
-                update_records.append(
-                    (action_ref, current_tag, granularize_tag(current_tag, latest_tag))
-                )
-                print(
-                    f"::notice::Updated {action_ref} from {current_tag} to {latest_tag}"
-                )
+                update_records.append((action_ref, current_tag, new_tag))
+                print(f"::notice::Updated {action_ref} from {current_tag} to {new_tag}")
 
     if not upgrades:
         print("All matching actions are up to date.")
