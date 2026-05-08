@@ -29,6 +29,9 @@ jobs:
           - name: Cargo
             directory: cargo
             has-requirements: false
+          - name: Docker
+            directory: docker
+            has-requirements: true
           - name: Shared Scripts
             directory: shared
             has-requirements: false
@@ -139,3 +142,19 @@ jobs:
           dry-run: 'true'
           working-dir: 'terraform/test'
           var-file-path: 'test.tfvars'
+
+  test-docker:
+    name: Test Docker Images Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup test fixtures
+        run: |
+          cp docker/test/Dockerfile .
+          cp docker/test/docker-compose.yml .
+
+      - name: Test Docker images updater
+        uses: ./docker
+        with:
+          dry-run: 'true'
