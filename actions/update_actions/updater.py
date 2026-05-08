@@ -36,6 +36,7 @@ def update_actions(
     for use in sorted(uses_set):
         if "@" not in use:
             continue
+
         action_ref, current_tag = use.split("@", 1)
         action_parts = action_ref.split("/")
         if len(action_parts) < 2 or action_ref.startswith(("./", "../", "docker://")):
@@ -64,22 +65,27 @@ def update_actions(
         if release_repo not in release_tags_cache:
             release_tags_cache[release_repo] = fetch_release_tags(release_repo)
         tags = release_tags_cache[release_repo]
+
         latest_tag = select_latest_tag(tags)
         if latest_tag is None:
             print(f"Skipping {action_ref}@{current_tag} (no valid release tags found)")
             continue
 
         latest_version = parse_version(latest_tag)
-        if latest_version and latest_version > current_version:
-            new_tag = granularize_tag(current_tag, latest_tag)
-            if new_tag == current_tag:
-                continue
+        if not latest_version or latest_version <= current_version:
+            continue
 
-            upgrade_key = (action_ref, current_tag)
-            if upgrade_key not in upgrades:
-                upgrades[upgrade_key] = latest_tag
-                update_records.append((action_ref, current_tag, new_tag))
-                print(f"::notice::Updated {action_ref} from {current_tag} to {new_tag}")
+        new_tag = granularize_tag(current_tag, latest_tag)
+        if new_tag == current_tag:
+            continue
+
+        upgrade_key = (action_ref, current_tag)
+        if upgrade_key in upgrades:
+            continue
+
+        upgrades[upgrade_key] = latest_tag
+        update_records.append((action_ref, current_tag, new_tag))
+        print(f"::notice::Updated {action_ref} from {current_tag} to {new_tag}")
 
     if not upgrades:
         print("All matching actions are up to date.")
