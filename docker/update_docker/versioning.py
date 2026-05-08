@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 import semver
 
-# A Docker tag we can compare numerically: optional "v" prefix, dotted
-# numeric core, optional "-suffix" with letters/digits/dots/dashes
-# (e.g. "-alpine", "-slim-bookworm", "-alpine3.20").
-TAG_PATTERN = re.compile(
-    r"^(?P<prefix>v?)(?P<numeric>\d+(?:\.\d+){0,2})(?P<suffix>(?:-[A-Za-z0-9][A-Za-z0-9.\-]*)?)$"
+
+_SUFFIX_ALLOWED = set(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
 )
 
 
@@ -29,17 +26,47 @@ def parse_image_tag(tag: str) -> TagVariant | None:
     """Parse an image tag into prefix/numeric/suffix, or None if not numeric.
 
     Tags such as ``latest``, ``nightly``, or ``edge`` return ``None`` so the
-    caller can skip them.
+    caller can skip them. The accepted shape is::
+
+        [v]<num>(.<num>){0,2}[-<alnum>[<alnum.->...]]
+
+    e.g. ``1.94``, ``v1.42.1``, ``1.94-alpine``, ``1.94-slim-bookworm``.
     """
-    match = TAG_PATTERN.match(tag)
-    if not match:
+    if not tag:
         return None
 
-    numeric_parts = tuple(int(part) for part in match.group("numeric").split("."))
+    # A leading "v" is only a prefix when it precedes a digit. Otherwise it's
+    # part of a non-numeric tag like "vault" and the whole tag is rejected.
+    if tag[0] == "v" and len(tag) > 1 and tag[1].isdigit():
+        prefix, rest = "v", tag[1:]
+    else:
+        prefix, rest = "", tag
+
+    # Split numeric core from optional "-suffix" on the first dash.
+    numeric_part, sep, suffix_body = rest.partition("-")
+    suffix = f"-{suffix_body}" if sep else ""
+
+    parts = numeric_part.split(".")
+    if not 1 <= len(parts) <= 3:
+        return None
+
+    if not all(part.isdigit() for part in parts):
+        return None
+
+    # Suffix body must start with an alphanumeric and only contain
+    # alphanumerics, "." or "-" (matches Docker tag conventions like
+    # "-alpine3.20" or "-slim-bookworm").
+    if suffix:
+        if not suffix_body or not suffix_body[0].isalnum():
+            return None
+
+        if any(ch not in _SUFFIX_ALLOWED for ch in suffix_body):
+            return None
+
     return TagVariant(
-        prefix=match.group("prefix"),
-        numeric=numeric_parts,
-        suffix=match.group("suffix"),
+        prefix=prefix,
+        numeric=tuple(int(part) for part in parts),
+        suffix=suffix,
     )
 
 
@@ -57,6 +84,7 @@ def select_latest_matching(tags: list[str], current: TagVariant) -> str | None:
         variant = parse_image_tag(tag)
         if variant is None:
             continue
+
         if variant.prefix != current.prefix or variant.suffix != current.suffix:
             continue
 

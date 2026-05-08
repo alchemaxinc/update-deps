@@ -26,15 +26,22 @@ class ImageRef:
         # Re-render in canonical "registry/repo:tag" form for logs and PR rows.
         if self.registry == "docker.io" and self.repo.startswith("library/"):
             return f"{self.repo[len('library/'):]}:{self.tag}"
+
         if self.registry == "docker.io":
             return f"{self.repo}:{self.tag}"
+
         return f"{self.registry}/{self.repo}:{self.tag}"
 
     @property
     def crane_repo(self) -> str:
         if self.registry == "docker.io":
             return self.repo
+
         return f"{self.registry}/{self.repo}"
+
+    @property
+    def full_ref(self) -> str:
+        return f"{self.registry}/{self.repo}:{self.tag}"
 
 
 # Matches `FROM [--platform=...] <ref> [AS <alias>]`. The optional final group
@@ -98,6 +105,7 @@ def scan_dockerfile(path: Path) -> list[ImageRef]:
         match = _FROM_RE.match(line)
         if not match:
             continue
+
         parsed.append((idx, match.group("ref"), match.group("alias")))
         if match.group("alias"):
             aliases.append(match.group("alias"))
@@ -105,25 +113,29 @@ def scan_dockerfile(path: Path) -> list[ImageRef]:
     refs: list[ImageRef] = []
     seen_aliases: set[str] = set()
     for line_no, ref, alias in parsed:
+        # Stage reference (e.g. FROM builder), not an image — skip.
         if ref in seen_aliases:
-            # Stage reference (e.g. FROM builder), not an image — skip.
             if alias:
                 seen_aliases.add(alias)
             continue
 
         split = _split_image_ref(ref)
-        if split is not None:
-            registry, repo, tag = split
-            refs.append(
-                ImageRef(
-                    source_path=path,
-                    line_number=line_no,
-                    source_kind="dockerfile",
-                    registry=registry,
-                    repo=repo,
-                    tag=tag,
-                )
+        if split is None:
+            if alias:
+                seen_aliases.add(alias)
+            continue
+
+        registry, repo, tag = split
+        refs.append(
+            ImageRef(
+                source_path=path,
+                line_number=line_no,
+                source_kind="dockerfile",
+                registry=registry,
+                repo=repo,
+                tag=tag,
             )
+        )
 
         if alias:
             seen_aliases.add(alias)
@@ -137,12 +149,15 @@ def _walk_compose(node, callback) -> None:
         for item in node:
             _walk_compose(item, callback)
         return
+
     if not isinstance(node, dict):
         return
+
     if isinstance(node.get("image"), str):
         callback(
             node["image"], node.lc.data["image"][0] + 1 if hasattr(node, "lc") else 0
         )
+
     for value in node.values():
         _walk_compose(value, callback)
 
@@ -170,6 +185,7 @@ def scan_compose(path: Path) -> list[ImageRef]:
         split = _split_image_ref(image)
         if split is None:
             return
+
         registry, repo, tag = split
         refs.append(
             ImageRef(
@@ -189,6 +205,7 @@ def scan_compose(path: Path) -> list[ImageRef]:
 def collect_files(root: Path, glob: str) -> list[Path]:
     if not glob:
         return []
+
     return sorted(p for p in root.glob(glob) if p.is_file())
 
 
@@ -216,6 +233,15 @@ def _markdown_pattern(needle: str) -> re.Pattern[str]:
     return re.compile(rf"(?<![\w./-]){re.escape(needle)}(?![\w-])")
 
 
+def _ref_needles(ref: ImageRef) -> list[str]:
+    """Return the search forms used to match ``ref`` in markdown bodies."""
+    needles = [ref.display]
+    if ref.full_ref not in needles:
+        needles.append(ref.full_ref)
+
+    return needles
+
+
 def find_markdown_occurrences(
     path: Path, candidates: list[ImageRef]
 ) -> Iterator[tuple[ImageRef, int]]:
@@ -226,15 +252,9 @@ def find_markdown_occurrences(
     """
     text = path.read_text(encoding="utf-8")
     for ref in candidates:
-        needles = [ref.display]
-        full = f"{ref.registry}/{ref.repo}:{ref.tag}"
-        if full not in needles:
-            needles.append(full)
-        for needle in needles:
-            pattern = _markdown_pattern(needle)
-            for match in pattern.finditer(text):
-                line_no = text.count("\n", 0, match.start()) + 1
-                yield ref, line_no
+        for needle in _ref_needles(ref):
+            for match in _markdown_pattern(needle).finditer(text):
+                yield ref, text.count("\n", 0, match.start()) + 1
 
 
 def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
@@ -243,13 +263,16 @@ def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
         return text
+
     line = lines[target]
     match = _FROM_RE.match(line)
     if not match:
         return text
+
     old_ref = match.group("ref")
     if not old_ref.endswith(f":{ref.tag}"):
         return text
+
     new_ref = old_ref[: -len(ref.tag)] + new_tag
     lines[target] = line.replace(old_ref, new_ref, 1)
     return "".join(lines)
@@ -261,9 +284,11 @@ def replace_compose_tag(text: str, ref: ImageRef, new_tag: str) -> str:
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
         return text
+
     line = lines[target]
     if f":{ref.tag}" not in line:
         return text
+
     # Replace the last colon-tag occurrence on the line so registry ports
     # (e.g. ``localhost:5000/...``) aren't rewritten by accident.
     suffix = f":{ref.tag}"
@@ -274,12 +299,8 @@ def replace_compose_tag(text: str, ref: ImageRef, new_tag: str) -> str:
 
 def replace_markdown_occurrences(text: str, ref: ImageRef, new_tag: str) -> str:
     """Replace every word-bounded occurrence of the ref's display form."""
-    needles = [ref.display]
-    full = f"{ref.registry}/{ref.repo}:{ref.tag}"
-    if full not in needles:
-        needles.append(full)
-    for needle in needles:
-        pattern = _markdown_pattern(needle)
+    for needle in _ref_needles(ref):
         replacement = needle[: -len(ref.tag)] + new_tag
-        text = pattern.sub(replacement, text)
+        text = _markdown_pattern(needle).sub(replacement, text)
+
     return text
