@@ -18,12 +18,16 @@ def fetch_release_tags(repo: str) -> list[str]:
             file=sys.stderr,
         )
         return []
+
     tags = []
     for line in result.stdout.splitlines():
         if not line.strip():
             continue
+
         tag, prerelease = line.split("\t", 1)
         if prerelease.strip().lower() == "true":
             continue
+
         tags.append(tag.strip())
+
     return tags

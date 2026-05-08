@@ -36,8 +36,10 @@ def categorize_update(old: str, new: str) -> str:
 
     if new_parts[0] > old_parts[0]:
         return "major"
+
     if new_parts[0] == old_parts[0] and new_parts[1] > old_parts[1]:
         return "minor"
+
     return "patch"
 
 
@@ -75,6 +77,7 @@ def read_updates(path: Path, column_count: int) -> dict[str, list[list[str]]]:
 def read_optional_text(path: str | None) -> str:
     if not path:
         return ""
+
     return Path(path).read_text(encoding="utf-8").strip()
 
 
