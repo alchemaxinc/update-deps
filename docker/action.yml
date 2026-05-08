@@ -126,6 +126,14 @@ runs:
       shell: bash
       run: python -m pip install -r ${{ github.action_path }}/requirements.txt
 
+    - name: Cache crane binary
+      id: cache_crane
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/crane
+        key: crane-${{ runner.os }}-${{ runner.arch }}-${{ inputs.crane-version }}
+
     - name: Install crane
       if: steps.check_existing_pr.outputs.exists != 'true'
       shell: bash

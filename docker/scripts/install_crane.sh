@@ -45,6 +45,21 @@ work_dir="${RUNNER_TEMP:-/tmp}/crane"
 bin_dir="$work_dir/bin"
 mkdir -p "$bin_dir"
 
+# Fast path: if a previous step (e.g. actions/cache) already restored the
+# pinned crane binary, skip the download/verify and just expose it on PATH.
+if [[ -x "$bin_dir/crane" ]]; then
+  installed_version="$("$bin_dir/crane" version 2>/dev/null || true)"
+  if [[ "$installed_version" == *"${version#v}"* ]]; then
+    echo "::notice::Reusing cached crane $version at $bin_dir/crane"
+    if [[ -n "${GITHUB_PATH:-}" ]]; then
+      echo "$bin_dir" >> "$GITHUB_PATH"
+    fi
+    exit 0
+  fi
+  echo "::notice::Cached crane reports version '$installed_version' (want '${version#v}'); reinstalling"
+  rm -f "$bin_dir/crane"
+fi
+
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
