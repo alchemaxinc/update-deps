@@ -61,14 +61,14 @@ bash scripts/install_crane.sh v0.21.5
 
 Each image reference is parsed into `(prefix, numeric, suffix)`:
 
-| Tag | prefix | numeric | suffix |
-| --- | --- | --- | --- |
-| `1.42.1` | `` | `(1, 42, 1)` | `` |
-| `v1.42.1` | `v` | `(1, 42, 1)` | `` |
-| `1.94-alpine` | `` | `(1, 94)` | `-alpine` |
-| `1.94-slim-bookworm` | `` | `(1, 94)` | `-slim-bookworm` |
-| `1-alpine` | `` | `(1,)` | `-alpine` |
-| `latest`, `nightly`, `edge` | _(unparseable — skipped)_ | | |
+| Tag                         | prefix                  | numeric      | suffix           |
+| --------------------------- | ----------------------- | ------------ | ---------------- |
+| `1.42.1`                    | ``                      | `(1, 42, 1)` | ``               |
+| `v1.42.1`                   | `v`                     | `(1, 42, 1)` | ``               |
+| `1.94-alpine`               | ``                      | `(1, 94)`    | `-alpine`        |
+| `1.94-slim-bookworm`        | ``                      | `(1, 94)`    | `-slim-bookworm` |
+| `1-alpine`                  | ``                      | `(1,)`       | `-alpine`        |
+| `latest`, `nightly`, `edge` | _(malformed — skipped)_ |              |                  |
 
 Only tags with the **same prefix and same suffix** are considered when picking
 the latest. The selected tag is then re-rendered at the same dot-depth as the
@@ -80,23 +80,23 @@ v1. `FROM scratch` and stage-alias references in multi-stage Dockerfiles
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                       |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ----------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                        |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`         |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-docker-images`        |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Docker Images`        |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Docker images`        |
-| `dockerfile-glob`   | Glob for Dockerfiles to scan (relative to repo root)                                       | :x:                | `**/Dockerfile*`              |
-| `compose-glob`      | Glob for docker-compose files                                                              | :x:                | `**/docker-compose*.y*ml`     |
-| `markdown-glob`     | Optional glob for markdown files. Empty disables markdown updates.                         | :x:                | -                             |
-| `excluded-images`   | Comma-separated literal registry, registry/repo, or registry/repo:tag values to exclude    | :x:                | -                             |
-| `crane-version`     | Pinned `google/go-containerregistry` release used to install crane                         | :x:                | `v0.21.5`                     |
-| `check-files`       | Path/glob used to detect and include changed files in the PR                               | :x:                | `.`                           |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                             |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                       |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                       |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                       |
+| Input               | Description                                                                                | Required           | Default                   |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                    |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`     |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-docker-images`    |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Docker Images`    |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Docker images`    |
+| `dockerfile-glob`   | Glob for Dockerfiles to scan (relative to repo root)                                       | :x:                | `**/Dockerfile*`          |
+| `compose-glob`      | Glob for docker-compose files                                                              | :x:                | `**/docker-compose*.y*ml` |
+| `markdown-glob`     | Optional glob for markdown files. Empty disables markdown updates.                         | :x:                | -                         |
+| `excluded-images`   | Comma-separated literal registry, registry/repo, or registry/repo:tag values to exclude    | :x:                | -                         |
+| `crane-version`     | Pinned `google/go-containerregistry` release used to install crane                         | :x:                | `v0.21.5`                 |
+| `check-files`       | Path/glob used to detect and include changed files in the PR                               | :x:                | `.`                       |
+| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
+| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
+| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 
