@@ -15,9 +15,9 @@ TAG_PATTERN = re.compile(
 
 @dataclass(frozen=True)
 class TagVariant:
-    prefix: str           # "" or "v"
+    prefix: str  # "" or "v"
     numeric: tuple[int, ...]
-    suffix: str           # "" or e.g. "-alpine"
+    suffix: str  # "" or e.g. "-alpine"
 
     @property
     def version(self) -> semver.Version:

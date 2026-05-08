@@ -58,7 +58,9 @@ class TestSelectLatestMatching(unittest.TestCase):
             "1.95",
             "latest",
         ]
-        self.assertEqual(versioning.select_latest_matching(tags, current), "1.95-alpine")
+        self.assertEqual(
+            versioning.select_latest_matching(tags, current), "1.95-alpine"
+        )
 
     def test_picks_highest(self):
         current = versioning.parse_image_tag("v1.42.1")
@@ -67,15 +69,21 @@ class TestSelectLatestMatching(unittest.TestCase):
 
     def test_returns_none_when_no_match(self):
         current = versioning.parse_image_tag("1.94-alpine")
-        self.assertIsNone(versioning.select_latest_matching(["latest", "nightly"], current))
+        self.assertIsNone(
+            versioning.select_latest_matching(["latest", "nightly"], current)
+        )
 
 
 class TestGranularizeTag(unittest.TestCase):
     def test_major_only(self):
-        self.assertEqual(versioning.granularize_tag("1-alpine", "1.95.0-alpine"), "1-alpine")
+        self.assertEqual(
+            versioning.granularize_tag("1-alpine", "1.95.0-alpine"), "1-alpine"
+        )
 
     def test_minor_only(self):
-        self.assertEqual(versioning.granularize_tag("1.94-alpine", "1.95.0-alpine"), "1.95-alpine")
+        self.assertEqual(
+            versioning.granularize_tag("1.94-alpine", "1.95.0-alpine"), "1.95-alpine"
+        )
 
     def test_patch(self):
         self.assertEqual(versioning.granularize_tag("v1.42.1", "v1.43.2"), "v1.43.2")

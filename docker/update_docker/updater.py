@@ -29,7 +29,9 @@ def _is_excluded(ref: ImageRef, excluded: set[str]) -> bool:
     candidates = {ref.registry, f"{ref.registry}/{ref.repo}", full}
     if ref.registry == "docker.io":
         # Allow excludes written without the implicit registry/library prefix.
-        repo_short = ref.repo[len("library/"):] if ref.repo.startswith("library/") else ref.repo
+        repo_short = (
+            ref.repo[len("library/") :] if ref.repo.startswith("library/") else ref.repo
+        )
         candidates.add(repo_short)
         candidates.add(f"{repo_short}:{ref.tag}")
     return bool(candidates & excluded)
@@ -113,7 +115,9 @@ def update_docker(
         updated = original
         # Replace from bottom of file upward so dockerfile/compose line
         # numbers stay stable across edits.
-        for ref, new_tag in sorted(items, key=lambda item: item[0].line_number, reverse=True):
+        for ref, new_tag in sorted(
+            items, key=lambda item: item[0].line_number, reverse=True
+        ):
             if ref.source_kind == "dockerfile":
                 updated = replace_dockerfile_tag(updated, ref, new_tag)
             elif ref.source_kind == "compose":

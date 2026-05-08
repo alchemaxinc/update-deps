@@ -52,7 +52,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = Path(args.root).resolve()
-    excluded = [item.strip() for item in args.excluded_images.split(",") if item.strip()]
+    excluded = [
+        item.strip() for item in args.excluded_images.split(",") if item.strip()
+    ]
     return update_docker(
         root=root,
         dockerfile_glob=args.dockerfile_glob,

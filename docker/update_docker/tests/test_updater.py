@@ -34,9 +34,7 @@ class TestUpdater(unittest.TestCase):
             encoding="utf-8",
         )
         (self.root / "docker-compose.yml").write_text(
-            "services:\n"
-            "  cache:\n"
-            "    image: redis:7.2\n",
+            "services:\n" "  cache:\n" "    image: redis:7.2\n",
             encoding="utf-8",
         )
 

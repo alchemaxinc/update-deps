@@ -140,7 +140,9 @@ def _walk_compose(node, callback) -> None:
     if not isinstance(node, dict):
         return
     if isinstance(node.get("image"), str):
-        callback(node["image"], node.lc.data["image"][0] + 1 if hasattr(node, "lc") else 0)
+        callback(
+            node["image"], node.lc.data["image"][0] + 1 if hasattr(node, "lc") else 0
+        )
     for value in node.values():
         _walk_compose(value, callback)
 
@@ -270,9 +272,7 @@ def replace_compose_tag(text: str, ref: ImageRef, new_tag: str) -> str:
     return "".join(lines)
 
 
-def replace_markdown_occurrences(
-    text: str, ref: ImageRef, new_tag: str
-) -> str:
+def replace_markdown_occurrences(text: str, ref: ImageRef, new_tag: str) -> str:
     """Replace every word-bounded occurrence of the ref's display form."""
     needles = [ref.display]
     full = f"{ref.registry}/{ref.repo}:{ref.tag}"

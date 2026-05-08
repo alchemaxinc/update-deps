@@ -28,7 +28,6 @@ class TestCraneList(unittest.TestCase):
         with mock.patch("subprocess.run", return_value=completed):
             self.assertEqual(crane.crane_list("library/rust"), [])
 
-
     def test_returns_empty_when_crane_missing(self):
         with mock.patch("subprocess.run", side_effect=FileNotFoundError()):
             self.assertEqual(crane.crane_list("library/rust"), [])

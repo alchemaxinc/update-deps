@@ -7,8 +7,10 @@ from update_docker import scanner
 
 class TestSplitImageRef(unittest.TestCase):
     def test_single_segment_uses_library(self):
-        self.assertEqual(scanner._split_image_ref("rust:1.94-alpine"),
-                         ("docker.io", "library/rust", "1.94-alpine"))
+        self.assertEqual(
+            scanner._split_image_ref("rust:1.94-alpine"),
+            ("docker.io", "library/rust", "1.94-alpine"),
+        )
 
     def test_org_image(self):
         self.assertEqual(
@@ -18,9 +20,7 @@ class TestSplitImageRef(unittest.TestCase):
 
     def test_third_party_registry(self):
         self.assertEqual(
-            scanner._split_image_ref(
-                "public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0"
-            ),
+            scanner._split_image_ref("public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0"),
             ("public.ecr.aws", "awsguru/aws-lambda-adapter", "1.0.0"),
         )
 
@@ -34,9 +34,7 @@ class TestSplitImageRef(unittest.TestCase):
         self.assertIsNone(scanner._split_image_ref("scratch"))
 
     def test_digest_pinned_skipped(self):
-        self.assertIsNone(
-            scanner._split_image_ref("rust:1.94-alpine@sha256:abcd1234")
-        )
+        self.assertIsNone(scanner._split_image_ref("rust:1.94-alpine@sha256:abcd1234"))
         self.assertIsNone(scanner._split_image_ref("rust@sha256:abcd1234"))
 
     def test_no_tag_skipped(self):
@@ -83,9 +81,7 @@ class TestScanDockerfile(unittest.TestCase):
     def test_skips_scratch_and_digest(self):
         path = self._write(
             "Dockerfile",
-            "FROM scratch\n"
-            "FROM rust:1.94-alpine@sha256:abc\n"
-            "FROM alpine:3.20\n",
+            "FROM scratch\n" "FROM rust:1.94-alpine@sha256:abc\n" "FROM alpine:3.20\n",
         )
         refs = scanner.scan_dockerfile(path)
         self.assertEqual([r.repo for r in refs], ["library/alpine"])
@@ -157,10 +153,7 @@ class TestMarkdown(unittest.TestCase):
         )
 
     def test_word_boundary_rejects_partial(self):
-        text = (
-            "Use rust:1.94-alpine in CI.\n"
-            "But never my-rust:1.94-alpine.\n"
-        )
+        text = "Use rust:1.94-alpine in CI.\n" "But never my-rust:1.94-alpine.\n"
         ref = self._ref("docker.io", "library/rust", "1.94-alpine")
         updated = scanner.replace_markdown_occurrences(text, ref, "1.95-alpine")
         self.assertIn("Use rust:1.95-alpine", updated)
