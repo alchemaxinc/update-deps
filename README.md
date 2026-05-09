@@ -12,3 +12,4 @@ A collection of convenient GitHub Actions for automatically updating your softwa
 - :globe_with_meridians: **[Terraform Dependencies](./terraform/README.md)** - Updates Terraform provider dependencies
 - :crab: **[Cargo Dependencies](./cargo/README.md)** - Updates Rust toolchain version and Cargo dependencies
 - :octocat: **[GitHub Actions](./actions/README.md)** - Updates GitHub Actions in workflow files to their latest versions
+- :whale: **[Docker Dependencies](./docker/README.md)** - Updates Docker image tags in Dockerfiles and docker-compose files
