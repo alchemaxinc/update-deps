@@ -38,6 +38,11 @@ inputs:
     description: 'Whether a successful PR should be automatically merged'
     default: 'false'
 
+  merge-method:
+    required: false
+    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    default: 'merge'
+
   skip-if-pr-exists:
     required: false
     description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
@@ -61,6 +66,19 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        MERGE_METHOD: ${{ inputs.merge-method }}
+      run: |
+        case "$MERGE_METHOD" in
+          merge|squash|rebase) ;;
+          *)
+            echo "::error::Invalid merge-method '$MERGE_METHOD'. Allowed values: merge, squash, rebase."
+            exit 1
+            ;;
+        esac
+
     - name: Checkout and setup
       if: inputs.dry-run != 'true'
       uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
@@ -251,3 +269,4 @@ runs:
       with:
         token: ${{ inputs.token }}
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}
+        merge-method: ${{ inputs.merge-method }}

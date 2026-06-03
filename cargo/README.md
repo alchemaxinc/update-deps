@@ -59,6 +59,7 @@ jobs:
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update Cargo dependencies` |
 | `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                           |
 | `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                     |
+| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                     |
 | `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                     |
 | `update-toolchain`  | Whether to update the Rust toolchain version                                               | :x:                | `true`                      |
 | `update-deps`       | Whether to update Cargo dependencies                                                       | :x:                | `true`                      |

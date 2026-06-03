@@ -41,6 +41,7 @@ jobs:
 | `relock`            | Whether `package-lock.json` should be regenerated                                          | :x:                | `false`                   |
 | `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
 | `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
+| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                   |
 | `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
 | `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
 
