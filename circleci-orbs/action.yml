@@ -113,7 +113,7 @@ runs:
     - name: Cache yq binary
       if: steps.check_existing_pr.outputs.exists != 'true'
       id: cache-yq
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.local/bin/yq
         key: yq-${{ inputs.yq-version }}-linux-amd64
