@@ -147,7 +147,7 @@ runs:
     - name: Cache crane binary
       id: cache_crane
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/crane
         key: crane-${{ runner.os }}-${{ runner.arch }}-${{ inputs.crane-version }}
