@@ -84,6 +84,35 @@ class TestFindAndReplaceVersion(unittest.TestCase):
         self.assertIn('tokio = "1.0.0"', new_content)
 
 
+class TestStripBuildMetadata(unittest.TestCase):
+    def test_strips_build_metadata(self):
+        self.assertEqual(
+            module.strip_build_metadata("0.9.34+deprecated"), "0.9.34"
+        )
+
+    def test_leaves_plain_version_untouched(self):
+        self.assertEqual(module.strip_build_metadata("1.0.228"), "1.0.228")
+
+    def test_preserves_prerelease(self):
+        self.assertEqual(
+            module.strip_build_metadata("1.0.0-rc.1"), "1.0.0-rc.1"
+        )
+
+    def test_strips_metadata_but_keeps_prerelease(self):
+        self.assertEqual(
+            module.strip_build_metadata("1.0.0-rc.1+build.5"), "1.0.0-rc.1"
+        )
+
+    def test_no_phantom_update_for_metadata_only_version(self):
+        content = '[dependencies]\nserde_yaml = "0.9.34"\n'
+        latest = module.strip_build_metadata("0.9.34+deprecated")
+        new_content, old = module.find_and_replace_version(
+            content, "serde_yaml", latest
+        )
+        self.assertIsNone(old)
+        self.assertEqual(content, new_content)
+
+
 class TestProcessManifest(unittest.TestCase):
     def test_updates_cargo_toml(self):
         with tempfile.TemporaryDirectory() as tmpdir:

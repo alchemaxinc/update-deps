@@ -35,6 +35,19 @@ def get_direct_dependencies(manifest_path):
     return sorted(deps)
 
 
+def strip_build_metadata(version):
+    """Drop SemVer build metadata (everything after a '+').
+
+    Build metadata is ignored when Cargo resolves version requirements, so it
+    is meaningless (and unidiomatic) inside a Cargo.toml constraint. Keeping it
+    would also make the string comparison in find_and_replace_version report a
+    phantom update on every run (e.g. "0.9.34" != "0.9.34+deprecated").
+    Pre-release identifiers (after a '-') are preserved as they affect
+    precedence.
+    """
+    return version.split("+", 1)[0]
+
+
 def get_latest_stable_version(crate_name):
     """Fetch the latest stable version from crates.io."""
     url = f"https://crates.io/api/v1/crates/{crate_name}"
@@ -46,7 +59,7 @@ def get_latest_stable_version(crate_name):
     )
     with urlopen(req) as resp:
         data = json.loads(resp.read())
-    return data["crate"]["max_stable_version"]
+    return strip_build_metadata(data["crate"]["max_stable_version"])
 
 
 def find_and_replace_version(content, crate_name, new_version):
