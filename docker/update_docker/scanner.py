@@ -8,7 +8,6 @@ from typing import Iterator, Literal
 
 from ruamel.yaml import YAML
 
-
 SourceKind = Literal["dockerfile", "compose", "markdown"]
 
 

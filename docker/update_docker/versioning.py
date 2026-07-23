@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import semver
 
-
 _SUFFIX_ALLOWED = set(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-"
 )

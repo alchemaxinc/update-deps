@@ -58,6 +58,11 @@ inputs:
     description: 'Whether to update Cargo dependencies'
     default: 'true'
 
+  keep-build-metadata:
+    required: false
+    description: "Preserve SemVer build metadata (the '+...' suffix, e.g. '0.9.34+deprecated') in written version requirements. Off by default because Cargo ignores build metadata when resolving dependencies."
+    default: 'false'
+
   dry-run:
     required: false
     description: 'Run without creating a PR (for testing purposes)'
@@ -155,6 +160,7 @@ runs:
       shell: bash
       run: |
         python3 "${{ github.action_path }}/scripts/update_cargo_deps.py" \
+          ${{ inputs.keep-build-metadata == 'true' && '--keep-build-metadata' || '' }} \
           $(echo '${{ steps.discover.outputs.manifests }}' | tr '\n' ' ')
 
     - name: Refresh Cargo.lock files

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Update Cargo.toml dependencies to their latest crates.io versions."""
 
+import argparse
 import json
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -35,8 +35,26 @@ def get_direct_dependencies(manifest_path):
     return sorted(deps)
 
 
-def get_latest_stable_version(crate_name):
-    """Fetch the latest stable version from crates.io."""
+def strip_build_metadata(version):
+    """Drop SemVer build metadata (everything after a '+').
+
+    Build metadata is ignored when Cargo resolves version requirements, so it
+    is meaningless (and unidiomatic) inside a Cargo.toml constraint. Keeping it
+    would also make the string comparison in find_and_replace_version report a
+    phantom update on every run (e.g. "0.9.34" != "0.9.34+deprecated").
+    Pre-release identifiers (after a '-') are preserved as they affect
+    precedence.
+    """
+    return version.split("+", 1)[0]
+
+
+def get_latest_stable_version(crate_name, keep_build_metadata=False):
+    """Fetch the latest stable version from crates.io.
+
+    By default SemVer build metadata (the "+..." suffix) is stripped, since it
+    is ignored by Cargo when resolving requirements and only adds noise to the
+    manifest. Pass keep_build_metadata=True to preserve it verbatim.
+    """
     url = f"https://crates.io/api/v1/crates/{crate_name}"
     req = Request(
         url,
@@ -46,7 +64,10 @@ def get_latest_stable_version(crate_name):
     )
     with urlopen(req) as resp:
         data = json.loads(resp.read())
-    return data["crate"]["max_stable_version"]
+    version = data["crate"]["max_stable_version"]
+    if keep_build_metadata:
+        return version
+    return strip_build_metadata(version)
 
 
 def find_and_replace_version(content, crate_name, new_version):
@@ -89,7 +110,7 @@ def find_and_replace_version(content, crate_name, new_version):
     return new_content, old_version
 
 
-def process_manifest(manifest_path):
+def process_manifest(manifest_path, keep_build_metadata=False):
     """Process a single Cargo.toml, updating all dependencies to latest versions."""
     manifest = Path(manifest_path)
     content = manifest.read_text()
@@ -99,7 +120,7 @@ def process_manifest(manifest_path):
 
     for dep_name in deps:
         try:
-            latest = get_latest_stable_version(dep_name)
+            latest = get_latest_stable_version(dep_name, keep_build_metadata)
         except Exception as e:
             print(f"::warning::Failed to fetch latest version for {dep_name}: {e}")
             continue
@@ -119,14 +140,33 @@ def process_manifest(manifest_path):
 
 
 def main():
-    manifests = sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="Update Cargo.toml dependencies to their latest crates.io versions."
+    )
+    parser.add_argument(
+        "manifests",
+        nargs="*",
+        help="Paths to Cargo.toml files to update",
+    )
+    parser.add_argument(
+        "--keep-build-metadata",
+        action="store_true",
+        help=(
+            "Preserve SemVer build metadata (the '+...' suffix, e.g. "
+            "'0.9.34+deprecated') in written version requirements. Off by "
+            "default because Cargo ignores build metadata when resolving."
+        ),
+    )
+    args = parser.parse_args()
+
+    manifests = args.manifests
     if not manifests:
         print("::warning::No Cargo.toml files provided")
         return
 
     all_updates = []
     for manifest_path in manifests:
-        updates = process_manifest(manifest_path)
+        updates = process_manifest(manifest_path, args.keep_build_metadata)
         for name, old, new in updates:
             all_updates.append(
                 {
