@@ -86,18 +86,10 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Validate inputs
-      shell: bash
-      env:
-        MERGE_METHOD: ${{ inputs.merge-method }}
-      run: |
-        case "$MERGE_METHOD" in
-          merge|squash|rebase) ;;
-          *)
-            echo "::error::Invalid merge-method '$MERGE_METHOD'. Allowed values: merge, squash, rebase."
-            exit 1
-            ;;
-        esac
+    - name: Validate merge method
+      uses: ./shared/actions/validate-merge-method
+      with:
+        merge-method: ${{ inputs.merge-method }}
 
     - name: Checkout and setup
       if: inputs.dry-run != 'true'
@@ -109,26 +101,11 @@ runs:
     - name: Check for existing pull request
       id: check_existing_pr
       if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
-        PR_TITLE: ${{ inputs.pr-title }}
-        BASE_BRANCH: ${{ inputs.base-branch }}
-      run: |
-        existing=$(gh pr list \
-          --repo "$GITHUB_REPOSITORY" \
-          --state open \
-          --base "$BASE_BRANCH" \
-          --limit 200 \
-          --json title,number \
-          --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
-
-        if [ -n "$existing" ]; then
-          echo "::notice::Open PR #$existing with title \"$PR_TITLE\" already exists; skipping PR creation"
-          echo "exists=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "exists=false" >> "$GITHUB_OUTPUT"
-        fi
+      uses: ./shared/actions/check-existing-pr
+      with:
+        token: ${{ inputs.token }}
+        pr-title: ${{ inputs.pr-title }}
+        base-branch: ${{ inputs.base-branch }}
 
     - name: Setup Python
       if: steps.check_existing_pr.outputs.exists != 'true'

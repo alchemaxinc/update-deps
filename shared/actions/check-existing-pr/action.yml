@@ -1,0 +1,50 @@
+name: 'Check for Existing Pull Request'
+
+description: >-
+  Check whether an open pull request with the given title already exists on the
+  base branch. Exposes the result via the "exists" output so callers can skip
+  creating a duplicate pull request.
+
+inputs:
+  token:
+    required: true
+    description: 'GitHub token used to query pull requests'
+
+  pr-title:
+    required: true
+    description: 'Pull request title to look for'
+
+  base-branch:
+    required: true
+    description: 'Base branch to search open pull requests against'
+
+outputs:
+  exists:
+    description: 'Whether an open PR with the given title already exists ("true" or "false")'
+    value: ${{ steps.check_existing_pr.outputs.exists }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for existing pull request
+      id: check_existing_pr
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+      run: |
+        existing=$(gh pr list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --base "$BASE_BRANCH" \
+          --limit 200 \
+          --json title,number \
+          --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
+
+        if [ -n "$existing" ]; then
+          echo "::notice::Open PR #$existing with title \"$PR_TITLE\" already exists; skipping PR creation"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
