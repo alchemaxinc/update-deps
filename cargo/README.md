@@ -50,20 +50,21 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                     |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | --------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                      |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`       |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`       |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Cargo Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Cargo dependencies` |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                           |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                     |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                     |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                     |
-| `update-toolchain`  | Whether to update the Rust toolchain version                                               | :x:                | `true`                      |
-| `update-deps`       | Whether to update Cargo dependencies                                                       | :x:                | `true`                      |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                     |
+| Input                 | Description                                                                                                  | Required           | Default                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------ | --------------------------- |
+| `base-branch`         | Base branch for the pull request                                                                             | :white_check_mark: | `main`                      |
+| `token`               | GitHub token for authentication                                                                              | :x:                | `${{ github.token }}`       |
+| `branch-prefix`       | Prefix for the update branch                                                                                 | :x:                | `update-dependencies`       |
+| `pr-title`            | Title for the pull request                                                                                   | :x:                | `Update Cargo Dependencies` |
+| `commit-message`      | Commit message for the update                                                                                | :x:                | `Update Cargo dependencies` |
+| `app-slug`            | GitHub App slug for commit attribution                                                                       | :x:                | -                           |
+| `auto-merge`          | Whether automatic merge should be enabled for the PR                                                         | :x:                | `false`                     |
+| `merge-method`        | Merge method when auto-merging (`merge`, `squash`, `rebase`)                                                 | :x:                | `merge`                     |
+| `skip-if-pr-exists`   | Skip creating a new PR if an open PR with the same title already exists on the base branch                   | :x:                | `false`                     |
+| `update-toolchain`    | Whether to update the Rust toolchain version                                                                 | :x:                | `true`                      |
+| `update-deps`         | Whether to update Cargo dependencies                                                                         | :x:                | `true`                      |
+| `keep-build-metadata` | Preserve SemVer build metadata (the `+...` suffix, e.g. `0.9.34+deprecated`) in written version requirements | :x:                | `false`                     |
+| `dry-run`             | Run without creating a PR                                                                                    | :x:                | `false`                     |
 
 ## :mag: How It Works
 
@@ -74,6 +75,8 @@ The action fetches the latest stable Rust release from the GitHub API and compar
 ### Dependency Updates
 
 The action auto-discovers all `Cargo.toml` files in the repository (excluding `target/` directories), updates direct dependency version requirements to the latest stable crates.io versions, and runs `cargo update` for each manifest. This refreshes matching `Cargo.lock` files after the manifest changes.
+
+By default, SemVer build metadata (the `+...` suffix, e.g. `serde_yaml`'s `0.9.34+deprecated`) is stripped from written version requirements. Cargo ignores build metadata when resolving dependencies, so writing it into a manifest adds no value and produces a phantom "update" on every run. Set `keep-build-metadata: 'true'` to preserve it verbatim.
 
 ## :warning: Prerequisites
 

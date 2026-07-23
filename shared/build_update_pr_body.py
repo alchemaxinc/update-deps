@@ -8,7 +8,6 @@ import os
 import re
 from pathlib import Path
 
-
 VERSION_PATTERN = re.compile(r"(\d+(?:\.\d+)*)")
 CATEGORY_LABELS = {
     "major": "## Major Updates (Breaking Changes)",

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from update_docker.updater import update_docker
 
-
 # Stand-in tag listings keyed by crane repo (registry/repo, with implicit
 # docker.io stripped) so tests don't shell out.
 FAKE_TAGS = {

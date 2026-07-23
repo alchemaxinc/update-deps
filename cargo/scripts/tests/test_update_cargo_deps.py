@@ -86,17 +86,13 @@ class TestFindAndReplaceVersion(unittest.TestCase):
 
 class TestStripBuildMetadata(unittest.TestCase):
     def test_strips_build_metadata(self):
-        self.assertEqual(
-            module.strip_build_metadata("0.9.34+deprecated"), "0.9.34"
-        )
+        self.assertEqual(module.strip_build_metadata("0.9.34+deprecated"), "0.9.34")
 
     def test_leaves_plain_version_untouched(self):
         self.assertEqual(module.strip_build_metadata("1.0.228"), "1.0.228")
 
     def test_preserves_prerelease(self):
-        self.assertEqual(
-            module.strip_build_metadata("1.0.0-rc.1"), "1.0.0-rc.1"
-        )
+        self.assertEqual(module.strip_build_metadata("1.0.0-rc.1"), "1.0.0-rc.1")
 
     def test_strips_metadata_but_keeps_prerelease(self):
         self.assertEqual(
@@ -111,6 +107,35 @@ class TestStripBuildMetadata(unittest.TestCase):
         )
         self.assertIsNone(old)
         self.assertEqual(content, new_content)
+
+
+class TestGetLatestStableVersion(unittest.TestCase):
+    def _mock_urlopen(self, version):
+        payload = json.dumps({"crate": {"max_stable_version": version}}).encode()
+        resp = mock.MagicMock()
+        resp.read.return_value = payload
+        resp.__enter__.return_value = resp
+        return mock.patch.object(module, "urlopen", return_value=resp)
+
+    def test_strips_build_metadata_by_default(self):
+        with self._mock_urlopen("0.9.34+deprecated"):
+            self.assertEqual(module.get_latest_stable_version("serde_yaml"), "0.9.34")
+
+    def test_keeps_build_metadata_when_opted_in(self):
+        with self._mock_urlopen("0.9.34+deprecated"):
+            self.assertEqual(
+                module.get_latest_stable_version(
+                    "serde_yaml", keep_build_metadata=True
+                ),
+                "0.9.34+deprecated",
+            )
+
+    def test_plain_version_unaffected_by_flag(self):
+        with self._mock_urlopen("1.0.228"):
+            self.assertEqual(
+                module.get_latest_stable_version("serde", keep_build_metadata=True),
+                "1.0.228",
+            )
 
 
 class TestProcessManifest(unittest.TestCase):
