@@ -1,6 +1,6 @@
-name: 'Update NPM Dependencies'
+name: 'Update pnpm Dependencies'
 
-description: 'Update NPM dependencies using npm-check-updates'
+description: 'Update pnpm dependencies using npm-check-updates'
 
 inputs:
   token:
@@ -21,12 +21,12 @@ inputs:
   pr-title:
     required: false
     description: 'Title for the pull request'
-    default: 'Update NPM Dependencies'
+    default: 'Update pnpm Dependencies'
 
   commit-message:
     required: false
     description: 'The commit message for the update'
-    default: 'Update NPM dependencies'
+    default: 'Update pnpm dependencies'
 
   excluded-packages:
     required: false
@@ -34,7 +34,7 @@ inputs:
 
   relock:
     required: false
-    description: 'Whether package-lock.json should be regenerated, even if no other updates are available'
+    description: 'Whether pnpm-lock.yaml should be regenerated, even if no other updates are available'
     default: 'false'
 
   app-slug:
@@ -109,11 +109,15 @@ runs:
           echo "exists=false" >> "$GITHUB_OUTPUT"
         fi
 
+    - name: Setup pnpm
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      uses: pnpm/action-setup@v6
+
     - name: Setup Node.js
       if: steps.check_existing_pr.outputs.exists != 'true'
       uses: actions/setup-node@v7
       with:
-        cache: 'npm'
+        cache: 'pnpm'
         node-version-file: '.nvmrc'
 
     - name: Cache npm-check-updates
@@ -122,7 +126,7 @@ runs:
       uses: actions/cache@v6
       with:
         path: ~/.npm-global
-        key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+        key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           npm-ncu-${{ runner.os }}-
 
@@ -139,9 +143,10 @@ runs:
       if: steps.check_existing_pr.outputs.exists != 'true'
       uses: ./shared/actions/js-update-core
       with:
-        package-manager: 'npm'
-        lockfile: 'package-lock.json'
-        label: 'NPM'
+        package-manager: 'pnpm'
+        lockfile: 'pnpm-lock.yaml'
+        label: 'pnpm'
+        install-flags: '--no-frozen-lockfile'
         excluded-packages: ${{ inputs.excluded-packages }}
         relock: ${{ inputs.relock }}
 
@@ -150,7 +155,7 @@ runs:
       if: inputs.dry-run != 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: alchemaxinc/composite-toolbox/check-changes@v1
       with:
-        files: 'package.json package-lock.json'
+        files: 'package.json pnpm-lock.yaml'
 
     - name: Create Pull Request
       id: open-pr
@@ -160,7 +165,7 @@ runs:
         token: ${{ inputs.token }}
         base-branch: ${{ inputs.base-branch }}
         branch-prefix: ${{ inputs.branch-prefix }}
-        files: 'package.json package-lock.json'
+        files: 'package.json pnpm-lock.yaml'
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
         pr-body: ${{ steps.js_update.outputs.pr_body }}

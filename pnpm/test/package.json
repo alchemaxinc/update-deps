@@ -1,0 +1,9 @@
+{
+  "name": "test-fixture",
+  "version": "1.0.0",
+  "description": "Test fixture for pnpm action",
+  "packageManager": "pnpm@9.15.9",
+  "dependencies": {
+    "lodash": "^4.17.0"
+  }
+}
