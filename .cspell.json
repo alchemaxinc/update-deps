@@ -1,6 +1,6 @@
 {
   "language": "en",
-  "words": ["alchemaxinc", "relock", "octocat"],
+  "words": ["alchemaxinc", "relock", "octocat", "pnpm"],
   "files": ["*.md", "*/**/*.md"],
   "ignoreWords": ["tfvars"],
   "ignorePaths": [],

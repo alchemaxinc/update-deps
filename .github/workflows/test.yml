@@ -114,6 +114,23 @@ jobs:
         with:
           dry-run: 'true'
 
+  test-pnpm:
+    name: Test pnpm Dependencies Updater
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup test fixtures
+        run: |
+          cp pnpm/test/package.json .
+          cp pnpm/test/pnpm-lock.yaml .
+          cp pnpm/test/.nvmrc .
+
+      - name: Test pnpm dependencies updater
+        uses: ./pnpm
+        with:
+          dry-run: 'true'
+
   test-cargo:
     name: Test Cargo Dependencies Updater
     runs-on: ubuntu-latest

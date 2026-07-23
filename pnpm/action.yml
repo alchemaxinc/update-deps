@@ -1,0 +1,270 @@
+name: 'Update pnpm Dependencies'
+
+description: 'Update pnpm dependencies using npm-check-updates'
+
+inputs:
+  token:
+    required: false
+    description: 'GitHub token'
+    default: ${{ github.token }}
+
+  base-branch:
+    required: true
+    description: 'Base branch for PR'
+    default: 'main'
+
+  branch-prefix:
+    required: false
+    description: 'Branch prefix'
+    default: 'update-dependencies'
+
+  pr-title:
+    required: false
+    description: 'Title for the pull request'
+    default: 'Update pnpm Dependencies'
+
+  commit-message:
+    required: false
+    description: 'The commit message for the update'
+    default: 'Update pnpm dependencies'
+
+  excluded-packages:
+    required: false
+    description: 'Packages to exclude from updates, in a comma-separated list format'
+
+  relock:
+    required: false
+    description: 'Whether pnpm-lock.yaml should be regenerated, even if no other updates are available'
+    default: 'false'
+
+  app-slug:
+    required: false
+    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    default: ''
+
+  auto-merge:
+    required: false
+    description: 'Whether a successful PR should be automatically merged'
+    default: 'false'
+
+  merge-method:
+    required: false
+    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    default: 'merge'
+
+  skip-if-pr-exists:
+    required: false
+    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    default: 'false'
+
+  dry-run:
+    required: false
+    description: 'Run without creating a PR (for testing purposes)'
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        MERGE_METHOD: ${{ inputs.merge-method }}
+      run: |
+        case "$MERGE_METHOD" in
+          merge|squash|rebase) ;;
+          *)
+            echo "::error::Invalid merge-method '$MERGE_METHOD'. Allowed values: merge, squash, rebase."
+            exit 1
+            ;;
+        esac
+
+    - name: Checkout and setup
+      if: inputs.dry-run != 'true'
+      uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+      with:
+        token: ${{ inputs.token }}
+        app-slug: ${{ inputs.app-slug }}
+
+    - name: Check for existing pull request
+      id: check_existing_pr
+      if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+      run: |
+        existing=$(gh pr list \
+          --repo "$GITHUB_REPOSITORY" \
+          --state open \
+          --base "$BASE_BRANCH" \
+          --limit 200 \
+          --json title,number \
+          --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
+
+        if [ -n "$existing" ]; then
+          echo "::notice::Open PR #$existing with title \"$PR_TITLE\" already exists; skipping PR creation"
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Setup pnpm
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      uses: pnpm/action-setup@v4
+
+    - name: Setup Node.js
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      uses: actions/setup-node@v7
+      with:
+        cache: 'pnpm'
+        node-version-file: '.nvmrc'
+
+    - name: Cache npm-check-updates
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      id: cache-ncu
+      uses: actions/cache@v6
+      with:
+        path: ~/.npm-global
+        key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          npm-ncu-${{ runner.os }}-
+
+    - name: Install npm-check-updates
+      if: steps.cache-ncu.outputs.cache-hit != 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      run: |
+        npm config set prefix '~/.npm-global'
+        export PATH=~/.npm-global/bin:$PATH
+        npm install -g npm-check-updates
+
+    - name: Check for available updates
+      if: steps.check_existing_pr.outputs.exists != 'true'
+      id: check_updates
+      shell: bash
+      env:
+        EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
+        RELOCK: ${{ inputs.relock }}
+      run: |
+        export PATH=~/.npm-global/bin:$PATH
+        ncu_output=$(ncu --reject "$EXCLUDED_PACKAGES" 2>/dev/null || true)
+        update_lines=$(echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' || true)
+
+        if [ -z "$update_lines" ]; then
+          echo "has_updates=false" >> "$GITHUB_OUTPUT"
+          if [ "$RELOCK" = "true" ]; then
+            echo "::notice::No package updates available; relocking pnpm-lock.yaml"
+            echo "should_install=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No updates available, stopping"
+            echo "should_install=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+        fi
+
+        echo "has_updates=true" >> "$GITHUB_OUTPUT"
+        echo "should_install=true" >> "$GITHUB_OUTPUT"
+        {
+          echo "update_lines<<ENDOFLINES"
+          echo "$update_lines"
+          echo "ENDOFLINES"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Apply updates to package.json
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      env:
+        EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
+      run: |
+        export PATH=~/.npm-global/bin:$PATH
+        ncu -u --reject "$EXCLUDED_PACKAGES"
+
+    - name: Collect update records
+      id: collect_updates
+      if: steps.check_updates.outputs.has_updates == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      env:
+        UPDATE_LINES: ${{ steps.check_updates.outputs.update_lines }}
+      run: |
+        updates=""
+
+        while IFS= read -r line; do
+          [ -z "$line" ] && continue
+          pkg=$(echo "$line" | awk '{print $1}')
+          old_ver=$(echo "$line" | awk '{print $2}')
+          new_ver=$(echo "$line" | awk '{print $4}')
+          [ -z "$pkg" ] && continue
+          [ -z "$old_ver" ] && continue
+          [ -z "$new_ver" ] && continue
+
+          echo "::notice::Updated $pkg from $old_ver to $new_ver"
+          updates+="${pkg}"$'\t'"${old_ver}"$'\t'"${new_ver}"$'\n'
+        done <<< "$UPDATE_LINES"
+
+        {
+          echo "updates<<ENDOFUPDATES"
+          printf "%s" "$updates"
+          echo "ENDOFUPDATES"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Build PR description
+      id: build_pr_body
+      if: steps.check_updates.outputs.should_install == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      env:
+        HAS_UPDATES: ${{ steps.check_updates.outputs.has_updates }}
+        UPDATES: ${{ steps.collect_updates.outputs.updates }}
+        PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
+      run: |
+        updates_file="$RUNNER_TEMP/pnpm-updates.tsv"
+        printf "%s\n" "$UPDATES" > "$updates_file"
+        empty_message=""
+        if [ "$HAS_UPDATES" != "true" ]; then
+          empty_message="Regenerated \`pnpm-lock.yaml\` without package version changes."
+        fi
+
+        python3 "$PR_BODY_SCRIPT" \
+          --title "# pnpm Dependencies Update" \
+          --columns "Package,Old,New" \
+          --updates-file "$updates_file" \
+          --empty-message "$empty_message" \
+          --footer ":robot: *This PR was automatically generated by the pnpm Dependencies Update action*"
+
+    - name: Install updated dependencies
+      if: steps.check_updates.outputs.should_install == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      shell: bash
+      env:
+        RELOCK: ${{ inputs.relock }}
+      run: |
+        if [ "$RELOCK" = "true" ]; then
+          rm -f pnpm-lock.yaml
+        fi
+        pnpm install --no-frozen-lockfile
+
+    - name: Check for changes
+      id: check_changes
+      if: inputs.dry-run != 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      uses: alchemaxinc/composite-toolbox/check-changes@v1
+      with:
+        files: 'package.json pnpm-lock.yaml'
+
+    - name: Create Pull Request
+      id: open-pr
+      if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      uses: alchemaxinc/composite-toolbox/create-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        base-branch: ${{ inputs.base-branch }}
+        branch-prefix: ${{ inputs.branch-prefix }}
+        files: 'package.json pnpm-lock.yaml'
+        commit-message: ${{ inputs.commit-message }}
+        pr-title: ${{ inputs.pr-title }}
+        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+
+    - name: Auto-merge Pull Request
+      if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'
+      uses: alchemaxinc/composite-toolbox/merge-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        pull-request-number: ${{ steps.open-pr.outputs.pr_number }}
+        merge-method: ${{ inputs.merge-method }}
