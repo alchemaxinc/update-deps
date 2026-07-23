@@ -1,0 +1,26 @@
+name: 'Validate Merge Method'
+
+description: >-
+  Validate that the provided merge method is one of the allowed values: merge,
+  squash or rebase. Fails the job with an error annotation when it is not.
+
+inputs:
+  merge-method:
+    required: true
+    description: 'Merge method to validate. Must be one of: merge, squash, rebase.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate merge method
+      shell: bash
+      env:
+        MERGE_METHOD: ${{ inputs.merge-method }}
+      run: |
+        case "$MERGE_METHOD" in
+          merge|squash|rebase) ;;
+          *)
+            echo "::error::Invalid merge-method '$MERGE_METHOD'. Allowed values: merge, squash, rebase."
+            exit 1
+            ;;
+        esac
