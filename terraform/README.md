@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Terraform Dependencies
-        uses: alchemaxinc/update-deps/terraform@v2.7.1
+        uses: alchemaxinc/update-deps/terraform@v2.8.0
         with:
           token: ${{ github.token }}
           base-branch: 'main'
