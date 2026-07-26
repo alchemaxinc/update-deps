@@ -109,7 +109,7 @@ runs:
 
     - name: Setup Python
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       env:
         PYTHON_VERSION: '3.14'
       with:
