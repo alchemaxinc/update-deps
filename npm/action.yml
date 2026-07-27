@@ -66,7 +66,7 @@ runs:
   using: 'composite'
   steps:
     - name: Validate merge method
-      uses: ./shared/actions/validate-merge-method
+      uses: alchemaxinc/update-deps/shared/actions/validate-merge-method@v2
       with:
         merge-method: ${{ inputs.merge-method }}
 
@@ -80,7 +80,7 @@ runs:
     - name: Check for existing pull request
       id: check_existing_pr
       if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
-      uses: ./shared/actions/check-existing-pr
+      uses: alchemaxinc/update-deps/shared/actions/check-existing-pr@v2
       with:
         token: ${{ inputs.token }}
         pr-title: ${{ inputs.pr-title }}
@@ -114,7 +114,7 @@ runs:
     - name: Update dependencies
       id: js_update
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: ./shared/actions/js-update-core
+      uses: alchemaxinc/update-deps/shared/actions/js-update-core@v2
       with:
         package-manager: 'npm'
         lockfile: 'package-lock.json'
