@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Docker images
-        uses: alchemaxinc/update-deps/docker@v2.8.1
+        uses: alchemaxinc/update-deps/docker@v2.9.0
         with:
           token: ${{ github.token }}
           base-branch: 'main'
