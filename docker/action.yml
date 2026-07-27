@@ -87,7 +87,7 @@ runs:
   using: 'composite'
   steps:
     - name: Validate merge method
-      uses: alchemaxinc/update-deps/shared/actions/validate-merge-method@v2
+      uses: alchemaxinc/composite-toolbox/validate-merge-method@v1
       with:
         merge-method: ${{ inputs.merge-method }}
 
@@ -101,7 +101,7 @@ runs:
     - name: Check for existing pull request
       id: check_existing_pr
       if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
-      uses: alchemaxinc/update-deps/shared/actions/check-existing-pr@v2
+      uses: alchemaxinc/composite-toolbox/check-existing-pr@v1
       with:
         token: ${{ inputs.token }}
         pr-title: ${{ inputs.pr-title }}
