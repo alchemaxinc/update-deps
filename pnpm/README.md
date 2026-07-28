@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update pnpm Dependencies
-        uses: alchemaxinc/update-deps/pnpm@v2.9.0
+        uses: alchemaxinc/update-deps/pnpm@v2.10.0
         with:
           token: ${{ github.token }}
           base-branch: 'main'
