@@ -1,7 +1,7 @@
 # Update pnpm Dependencies :package:
 
-This GitHub Action automatically updates pnpm dependencies using `npm-check-updates` and creates a pull request with the
-changes.
+This GitHub Action automatically updates pnpm dependencies using `pnpm update --latest` and creates a pull request with
+the changes.
 
 ## :rocket: Usage
 
@@ -51,3 +51,14 @@ jobs:
 - Node.js version should be specified in `.nvmrc` file
 - The pnpm version can be pinned via the `packageManager` field in `package.json` (read by `pnpm/action-setup`)
 - The action requires write permissions to create branches and pull requests
+
+## :information_source: Behavior Notes
+
+Because updates are applied by pnpm itself rather than by an external tool, keep the following in mind:
+
+- `catalog:` entries in `pnpm-workspace.yaml` are updated as well, and the file is included in the pull request when it
+  exists
+- On the first run, pnpm rewrites `package.json` with the dependency keys sorted alphabetically
+- A `"*"` range is replaced by a concrete caret range (for example `^1.3.0`)
+- `excluded-packages` entries are passed to pnpm as negation patterns (`!<package>`). Plain package names behave as
+  before; pnpm additionally supports glob patterns such as `@scope/*`
