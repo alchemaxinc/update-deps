@@ -123,7 +123,11 @@ runs:
           args+=("!$pkg")
         done
 
-        pnpm update --latest "${args[@]}"
+        if [ "${#args[@]}" -gt 0 ]; then
+          pnpm update --latest '*' "${args[@]}"
+        else
+          pnpm update --latest
+        fi
 
         if [ "$RELOCK" = "true" ]; then
           pnpm install --no-frozen-lockfile
