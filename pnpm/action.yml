@@ -34,7 +34,7 @@ inputs:
 
   relock:
     required: false
-    description: 'Whether pnpm-lock.yaml should be regenerated, even if no other updates are available'
+    description: 'Whether pnpm-lock.yaml should be refreshed, even if no other updates are available'
     default: 'false'
 
   app-slug:
@@ -126,9 +126,8 @@ runs:
         fi
 
         if [ "$RELOCK" = "true" ]; then
-          # Rebuild only after updating: deleting the lockfile before applying
-          # exclusions can resolve excluded packages outside their manifest ranges.
-          rm -f pnpm-lock.yaml
+          # Keep existing optional dependencies for other platforms. A fresh
+          # lockfile generated on one runner can omit them.
           pnpm install --no-frozen-lockfile
         fi
 
