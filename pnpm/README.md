@@ -38,7 +38,7 @@ jobs:
 | `pr-title`          | Title for the pull request                                                                 | :x:                | `Update pnpm Dependencies` |
 | `commit-message`    | Commit message for the update                                                              | :x:                | `Update pnpm dependencies` |
 | `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                          |
-| `relock`            | Whether `pnpm-lock.yaml` should be regenerated                                             | :x:                | `false`                    |
+| `relock`            | Whether `pnpm-lock.yaml` should be refreshed                                               | :x:                | `false`                    |
 | `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                          |
 | `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                    |
 | `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                    |
