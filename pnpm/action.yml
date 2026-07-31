@@ -111,10 +111,6 @@ runs:
         EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
         RELOCK: ${{ inputs.relock }}
       run: |
-        if [ "$RELOCK" = "true" ]; then
-          rm -f pnpm-lock.yaml
-        fi
-
         args=()
         IFS=',' read -ra excluded <<< "$EXCLUDED_PACKAGES"
         for pkg in "${excluded[@]}"; do
@@ -130,8 +126,13 @@ runs:
         fi
 
         if [ "$RELOCK" = "true" ]; then
-          pnpm install --no-frozen-lockfile
+          # Rebuild only after updating: deleting the lockfile before applying
+          # exclusions can resolve excluded packages outside their manifest ranges.
+          rm -f pnpm-lock.yaml
+          pnpm install --no-frozen-lockfile --lockfile-only
         fi
+
+        pnpm install --frozen-lockfile --lockfile-only
 
     - name: Collect update records
       id: collect_updates
