@@ -117,8 +117,9 @@ def build_body(
         parts.append("\n".join(section))
 
     parts.append("---")
+    parts.append(f"{BOT_NOTICE}[^update-deps]")
     parts.append(
-        f"{BOT_NOTICE} [Get this update action for your own repository.]({source_url})"
+        f"[^update-deps]: [Get this update action for your own repository.]({source_url})"
     )
     return "\n\n".join(parts)
 
