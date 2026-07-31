@@ -129,10 +129,10 @@ runs:
           # Rebuild only after updating: deleting the lockfile before applying
           # exclusions can resolve excluded packages outside their manifest ranges.
           rm -f pnpm-lock.yaml
-          pnpm install --no-frozen-lockfile --lockfile-only
+          pnpm install --no-frozen-lockfile
         fi
 
-        pnpm install --frozen-lockfile --lockfile-only
+        pnpm install --frozen-lockfile
 
     - name: Collect update records
       id: collect_updates
