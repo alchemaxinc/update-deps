@@ -65,7 +65,7 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Print planned updates without modifying files or creating a PR'
     default: 'false'
 
 runs:
@@ -116,7 +116,8 @@ runs:
         python ${{ github.action_path }}/cli.py \
           --root "$GITHUB_WORKSPACE" \
           --file-glob "${{ inputs.file-glob }}" \
-          --excluded-actions "${{ inputs.excluded-actions }}"
+          --excluded-actions "${{ inputs.excluded-actions }}" \
+          ${{ inputs.dry-run == 'true' && '--dry-run' || '' }}
 
     - name: Build PR description
       id: build_pr_body

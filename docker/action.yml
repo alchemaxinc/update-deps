@@ -80,7 +80,7 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Print planned updates without modifying files or creating a PR'
     default: 'false'
 
 runs:
@@ -147,7 +147,8 @@ runs:
           --dockerfile-glob "${{ inputs.dockerfile-glob }}" \
           --compose-glob "${{ inputs.compose-glob }}" \
           --markdown-glob "${{ inputs.markdown-glob }}" \
-          --excluded-images "${{ inputs.excluded-images }}"
+          --excluded-images "${{ inputs.excluded-images }}" \
+          ${{ inputs.dry-run == 'true' && '--dry-run' || '' }}
 
     - name: Build PR description
       id: build_pr_body
