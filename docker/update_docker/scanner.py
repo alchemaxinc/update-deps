@@ -152,10 +152,13 @@ def _walk_compose(node, callback) -> None:
     if not isinstance(node, dict):
         return
 
-    if isinstance(node.get("image"), str):
-        callback(
-            node["image"], node.lc.data["image"][0] + 1 if hasattr(node, "lc") else 0
-        )
+    # ``dict.get`` includes values inherited through YAML merges. Those have
+    # no source location on the consuming service, so update the explicit
+    # anchor definition instead.
+    if "image" in node and isinstance(node["image"], str):
+        key_position = node.lc.key("image")
+        if key_position is not None:
+            callback(node["image"], key_position[0] + 1)
 
     for value in node.values():
         _walk_compose(value, callback)
@@ -278,21 +281,26 @@ def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
 
 
 def replace_compose_tag(text: str, ref: ImageRef, new_tag: str) -> str:
-    """Replace the tag on the compose ``image:`` line."""
+    """Replace the image scalar on the parser-identified ``image:`` line."""
     lines = text.splitlines(keepends=True)
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
         return text
 
     line = lines[target]
-    if f":{ref.tag}" not in line:
+    image_forms = sorted({ref.display, ref.full_ref}, key=len, reverse=True)
+    match = re.match(
+        rf"^(?P<prefix>\s*image\s*:\s*)(?P<quote>['\"]?)(?P<image>{'|'.join(re.escape(image) for image in image_forms)})(?P=quote)(?P<suffix>\s*(?:#.*)?(?:\r?\n)?)$",
+        line,
+    )
+    if match is None:
         return text
 
-    # Replace the last colon-tag occurrence on the line so registry ports
-    # (e.g. ``localhost:5000/...``) aren't rewritten by accident.
-    suffix = f":{ref.tag}"
-    idx = line.rfind(suffix)
-    lines[target] = line[:idx] + f":{new_tag}" + line[idx + len(suffix) :]
+    new_image = match.group("image")[: -len(ref.tag)] + new_tag
+    lines[target] = (
+        f"{match.group('prefix')}{match.group('quote')}{new_image}"
+        f"{match.group('quote')}{match.group('suffix')}"
+    )
     return "".join(lines)
 
 

@@ -135,6 +135,40 @@ class TestScanCompose(unittest.TestCase):
         self.assertIn("getmeili/meilisearch:v1.43.0", updated)
         self.assertNotIn("v1.42.1", updated)
 
+    def test_replace_compose_tag_does_not_touch_comment_or_command(self):
+        path = self.root / "docker-compose.yml"
+        path.write_text(
+            "services:\n"
+            "  app:\n"
+            "    image: redis:7.2 # redis:7.2 remains in this comment\n"
+            "    command: echo redis:7.2\n",
+            encoding="utf-8",
+        )
+        ref = scanner.scan_compose(path)[0]
+        updated = scanner.replace_compose_tag(
+            path.read_text(encoding="utf-8"), ref, "7.4"
+        )
+        self.assertIn("image: redis:7.4 # redis:7.2 remains in this comment", updated)
+        self.assertIn("command: echo redis:7.2", updated)
+
+    def test_merge_inherited_image_updates_anchor_definition(self):
+        path = self.root / "docker-compose.yml"
+        path.write_text(
+            "x-default: &default\n"
+            "  image: redis:7.2\n"
+            "services:\n"
+            "  cache:\n"
+            "    <<: *default\n",
+            encoding="utf-8",
+        )
+        refs = scanner.scan_compose(path)
+        self.assertEqual(len(refs), 1)
+        self.assertEqual(refs[0].line_number, 2)
+        updated = scanner.replace_compose_tag(
+            path.read_text(encoding="utf-8"), refs[0], "7.4"
+        )
+        self.assertIn("image: redis:7.4", updated)
+
 
 class TestMarkdown(unittest.TestCase):
     def setUp(self):
