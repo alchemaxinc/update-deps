@@ -88,6 +88,9 @@ def select_latest_matching(tags: list[str], current: TagVariant) -> str | None:
             continue
 
         version = variant.version
+        if version <= current.version:
+            continue
+
         if best_version is None or version > best_version:
             best_version = version
             best_tag = tag
