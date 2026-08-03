@@ -123,7 +123,7 @@ jobs:
 
       - name: Install CSpell
         if: steps.cache-cspell.outputs.cache-hit != 'true'
-        run: npm i -D cspell
+        run: npm i -D cspell@${{ env.CSPELL_VERSION }}
 
   run-cspell:
     runs-on: ubuntu-latest

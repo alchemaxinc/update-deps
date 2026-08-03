@@ -32,6 +32,11 @@ inputs:
     required: false
     description: 'Packages to exclude from updates, in a comma-separated list format'
 
+  npm-check-updates-version:
+    required: false
+    description: 'Exact npm-check-updates version to install'
+    default: '23.0.1'
+
   relock:
     required: false
     description: 'Whether package-lock.json should be regenerated, even if no other updates are available'
@@ -99,9 +104,9 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
       with:
         path: ~/.npm-global
-        key: npm-ncu-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+        key: npm-ncu-${{ runner.os }}-${{ inputs.npm-check-updates-version }}-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
-          npm-ncu-${{ runner.os }}-
+          npm-ncu-${{ runner.os }}-${{ inputs.npm-check-updates-version }}-
 
     - name: Install npm-check-updates
       if: steps.cache-ncu.outputs.cache-hit != 'true' && steps.check_existing_pr.outputs.exists != 'true'
@@ -109,7 +114,7 @@ runs:
       run: |
         npm config set prefix '~/.npm-global'
         export PATH=~/.npm-global/bin:$PATH
-        npm install -g --ignore-scripts npm-check-updates
+        npm install -g --ignore-scripts npm-check-updates@${{ inputs.npm-check-updates-version }}
 
     - name: Check for available updates
       id: check_updates
