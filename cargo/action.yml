@@ -9,9 +9,8 @@ inputs:
     default: ${{ github.token }}
 
   base-branch:
-    required: false
+    required: true
     description: 'Base branch for PR'
-    default: 'main'
 
   branch-prefix:
     required: false
