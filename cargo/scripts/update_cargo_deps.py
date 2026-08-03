@@ -91,17 +91,23 @@ def process_manifest(manifest_path, keep_build_metadata=False):
     before = get_direct_dependencies(str(manifest))
     metadata = find_build_metadata(manifest.read_text()) if keep_build_metadata else {}
 
-    subprocess.run(
-        [
-            "cargo",
-            "upgrade",
-            "--manifest-path",
-            str(manifest),
-            "--incompatible",
-            "--pinned",
-        ],
-        check=True,
-    )
+    try:
+        subprocess.run(
+            [
+                "cargo",
+                "upgrade",
+                "--manifest-path",
+                str(manifest),
+                "--incompatible",
+                "--pinned",
+            ],
+            check=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(
+            f"::warning::Failed to upgrade dependencies in {manifest_path}: {error}"
+        )
+        return []
 
     after = get_direct_dependencies(str(manifest))
     restored = {}

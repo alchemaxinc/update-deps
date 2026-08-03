@@ -93,6 +93,19 @@ class TestProcessManifest(unittest.TestCase):
 
         self.assertEqual(updates, [])
 
+    def test_skips_manifest_when_cargo_upgrade_fails(self):
+        with mock.patch.object(
+            module, "get_direct_dependencies", return_value={}
+        ):
+            with mock.patch.object(
+                module.subprocess,
+                "run",
+                side_effect=module.subprocess.CalledProcessError(
+                    1, ["cargo", "upgrade"]
+                ),
+            ):
+                self.assertEqual(module.process_manifest("Cargo.toml"), [])
+
     def test_preserves_build_metadata_when_requested(self):
         old_requirement = "^1.0.0"
         new_requirement = "^1.0.228"
