@@ -6,6 +6,8 @@ import re
 import subprocess
 import sys
 
+EXCLUDED_DIRECTORIES = {".terraform", ".git", "terraform.tfstate.d"}
+
 
 def parse_version(version):
     """Return a numeric SemVer tuple, or None for unsupported versions."""
@@ -155,7 +157,7 @@ def main():
         dirs[:] = [
             directory
             for directory in dirs
-            if directory not in {".terraform", ".git", "terraform.tfstate.d"}
+            if directory not in EXCLUDED_DIRECTORIES
         ]
         for file in files:
             if file.endswith(".tf"):
