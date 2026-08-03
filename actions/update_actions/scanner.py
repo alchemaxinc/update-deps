@@ -129,17 +129,50 @@ def collect_workflow_files(root: Path, file_glob: str) -> list[Path]:
     return sorted(root.glob(file_glob))
 
 
+def find_uses_line_numbers(obj) -> set[int]:
+    """Return zero-based source lines for YAML mapping keys named ``uses``."""
+    lines = set()
+    if isinstance(obj, list):
+        for item in obj:
+            lines.update(find_uses_line_numbers(item))
+        return lines
+
+    if not isinstance(obj, dict):
+        return lines
+
+    if isinstance(obj.get("uses"), str):
+        key_position = obj.lc.key("uses")
+        if key_position is not None:
+            lines.add(key_position[0])
+
+    for value in obj.values():
+        lines.update(find_uses_line_numbers(value))
+    return lines
+
+
 def apply_updates(text: str, upgrades: dict[tuple[str, str], str]) -> str:
     """
     Apply updates to a YAML workflow file by doing targeted text replacements.
     This preserves all original formatting and comments, only modifying the 'uses:' lines.
     """
     # Do not dump the parsed YAML back out: even ruamel can alter comments,
-    # indentation, or multiline run blocks. The parser is used for discovery;
-    # the actual write path is intentionally line-based and narrow.
+    # indentation, or multiline run blocks. Its source locations let us keep
+    # the minimal line-level rewrite without touching scalar block contents.
+    yaml = YAML()
+    try:
+        allowed_lines = set()
+        for doc in yaml.load_all(text):
+            if doc is not None:
+                allowed_lines.update(find_uses_line_numbers(doc))
+    except Exception:
+        return text
+
     lines = text.split("\n")
 
     for i, line in enumerate(lines):
+        if i not in allowed_lines:
+            continue
+
         stripped = line.lstrip()
 
         # Guard: Skip if no 'uses:' found

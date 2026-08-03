@@ -99,6 +99,20 @@ class TestScanner(unittest.TestCase):
         )
         self.assertIn("uses: 'actions/checkout@v4'", updated)
 
+    def test_apply_updates_skips_heredoc_content(self):
+        text = """jobs:
+  build:
+    steps:
+      - run: |
+          echo "uses: actions/checkout@v3"
+      - uses: actions/checkout@v3
+"""
+        updated = scanner.apply_updates(
+            text, {("actions/checkout", "v3"): "v4"}
+        )
+        self.assertIn('echo "uses: actions/checkout@v3"', updated)
+        self.assertIn("- uses: actions/checkout@v4", updated)
+
     def test_collect_workflow_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
