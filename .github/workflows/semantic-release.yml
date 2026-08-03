@@ -20,6 +20,13 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      SEMANTIC_RELEASE_VERSION: '25.0.8'
+      SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION: '13.0.1'
+      SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION: '14.1.1'
+      SEMANTIC_RELEASE_NPM_VERSION: '13.1.5'
+      SEMANTIC_RELEASE_GITHUB_VERSION: '12.0.9'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -33,21 +40,30 @@ jobs:
         with:
           node-version: '24.10.0'
 
-      - name: Cache locked release tooling
+      - name: Cache release tooling
         id: cache-semantic-release
         uses: actions/cache@v6
         with:
-          path: node_modules
-          key: semantic-release-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          path: ~/.npm-semantic-release
+          key: semantic-release-${{ runner.os }}-${{ env.SEMANTIC_RELEASE_VERSION }}-${{ env.SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION }}-${{ env.SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION }}-${{ env.SEMANTIC_RELEASE_NPM_VERSION }}-${{ env.SEMANTIC_RELEASE_GITHUB_VERSION }}
 
-      - name: Install locked release tooling
+      - name: Install release tooling
         if: steps.cache-semantic-release.outputs.cache-hit != 'true'
-        run: npm ci --ignore-scripts
+        run: |
+          npm install --global --prefix "$HOME/.npm-semantic-release" --ignore-scripts \
+            semantic-release@${{ env.SEMANTIC_RELEASE_VERSION }} \
+            @semantic-release/commit-analyzer@${{ env.SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION }} \
+            @semantic-release/release-notes-generator@${{ env.SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION }} \
+            @semantic-release/npm@${{ env.SEMANTIC_RELEASE_NPM_VERSION }} \
+            @semantic-release/github@${{ env.SEMANTIC_RELEASE_GITHUB_VERSION }}
+
+      - name: Add release tooling to PATH
+        run: echo "$HOME/.npm-semantic-release/bin" >> "$GITHUB_PATH"
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./node_modules/.bin/semantic-release
+        run: semantic-release
 
   semantic-release-flowing-tags:
     name: Add flowing tags

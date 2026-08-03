@@ -40,9 +40,11 @@ untrusted checkout, including code from a forked pull request.
 The CI checks can be run locally on a supported Linux environment:
 
 ```bash
-npm ci --ignore-scripts
-npx --no-install prettier --check .
-npm exec --package=cspell@8.0.0 -- cspell
+tool_prefix="$HOME/.cache/update-deps-tools"
+npm install --global --prefix "$tool_prefix" --ignore-scripts \
+  prettier@3.3.3 cspell@8.0.0
+"$tool_prefix/bin/prettier" --check .
+"$tool_prefix/bin/cspell"
 
 python -m pip install "black==24.10.0" \
   -r actions/requirements.txt -r docker/requirements.txt
