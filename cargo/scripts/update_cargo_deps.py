@@ -4,8 +4,13 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 from pathlib import Path
+
+BUILD_METADATA_PATTERN = re.compile(
+    r'"(?P<requirement>[~^=<>!,\s]*\d+(?:\.\d+){0,2}(?:-[0-9A-Za-z.-]+)?)\+(?P<metadata>[0-9A-Za-z.-]+)"'
+)
 
 
 def get_direct_dependencies(manifest_path):
@@ -40,10 +45,51 @@ def get_direct_dependencies(manifest_path):
     return deps
 
 
-def process_manifest(manifest_path):
+def find_build_metadata(content):
+    """Map normalized requirements to their unique requested build metadata."""
+    metadata = {}
+    for match in BUILD_METADATA_PATTERN.finditer(content):
+        requirement = match.group("requirement")
+        suffix = match.group("metadata")
+        if requirement in metadata:
+            metadata[requirement] = None
+        else:
+            metadata[requirement] = suffix
+    return metadata
+
+
+def restore_build_metadata(content, before, after, metadata):
+    """Restore build metadata only when its upgraded requirement is unambiguous."""
+    restored = {}
+    for identity, old_requirement in before.items():
+        new_requirement = after.get(identity)
+        suffix = metadata.get(old_requirement)
+        if (
+            new_requirement is None
+            or new_requirement == old_requirement
+            or not suffix
+            or "+" in new_requirement
+        ):
+            continue
+
+        old_value = f'"{new_requirement}"'
+        new_value = f'"{new_requirement}+{suffix}"'
+        if content.count(old_value) != 1:
+            print(
+                f"::warning::Could not unambiguously preserve build metadata for "
+                f"{identity[1]} in Cargo.toml"
+            )
+            continue
+        content = content.replace(old_value, new_value, 1)
+        restored[identity] = f"{new_requirement}+{suffix}"
+    return content, restored
+
+
+def process_manifest(manifest_path, keep_build_metadata=False):
     """Upgrade a manifest with Cargo and return its changed requirements."""
     manifest = Path(manifest_path)
     before = get_direct_dependencies(str(manifest))
+    metadata = find_build_metadata(manifest.read_text()) if keep_build_metadata else {}
 
     subprocess.run(
         [
@@ -58,9 +104,18 @@ def process_manifest(manifest_path):
     )
 
     after = get_direct_dependencies(str(manifest))
+    restored = {}
+    if metadata:
+        content, restored = restore_build_metadata(
+            manifest.read_text(), before, after, metadata
+        )
+        if restored:
+            manifest.write_text(content)
+
     updates = []
     for identity, old_requirement in before.items():
         new_requirement = after.get(identity)
+        new_requirement = restored.get(identity, new_requirement)
         if new_requirement is not None and new_requirement != old_requirement:
             dependency_name = identity[1]
             updates.append((dependency_name, old_requirement, new_requirement))
@@ -85,6 +140,11 @@ def main():
         type=argparse.FileType("rb"),
         help="NUL-delimited file containing paths to Cargo.toml files to update",
     )
+    parser.add_argument(
+        "--keep-build-metadata",
+        action="store_true",
+        help="Preserve SemVer build metadata in upgraded version requirements",
+    )
     args = parser.parse_args()
 
     manifests = args.manifests
@@ -98,7 +158,7 @@ def main():
 
     all_updates = []
     for manifest_path in manifests:
-        updates = process_manifest(manifest_path)
+        updates = process_manifest(manifest_path, args.keep_build_metadata)
         for name, old, new in updates:
             all_updates.append(
                 {

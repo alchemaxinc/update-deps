@@ -93,6 +93,37 @@ class TestProcessManifest(unittest.TestCase):
 
         self.assertEqual(updates, [])
 
+    def test_preserves_build_metadata_when_requested(self):
+        old_requirement = "^1.0.0"
+        new_requirement = "^1.0.228"
+        dependency = {
+            "name": "serde",
+            "rename": None,
+            "kind": None,
+            "target": None,
+            "req": old_requirement,
+        }
+        updated_dependency = {**dependency, "req": new_requirement}
+
+        with self._mock_cargo(
+            self._metadata([dependency]), self._metadata([updated_dependency])
+        ):
+            with mock.patch.object(
+                module.Path,
+                "read_text",
+                side_effect=[
+                    '[dependencies]\nserde = "^1.0.0+important"\n',
+                    '[dependencies]\nserde = "^1.0.228"\n',
+                ],
+            ):
+                with mock.patch.object(module.Path, "write_text") as write_text:
+                    updates = module.process_manifest(
+                        "Cargo.toml", keep_build_metadata=True
+                    )
+
+        self.assertEqual(updates, [("serde", "^1.0.0", "^1.0.228+important")])
+        self.assertIn("^1.0.228+important", write_text.call_args.args[0])
+
 
 class TestMain(unittest.TestCase):
     def test_writes_dep_updates_to_github_output(self):
