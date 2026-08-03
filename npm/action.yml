@@ -109,7 +109,7 @@ runs:
       run: |
         npm config set prefix '~/.npm-global'
         export PATH=~/.npm-global/bin:$PATH
-        npm install -g npm-check-updates
+        npm install -g --ignore-scripts npm-check-updates
 
     - name: Check for available updates
       id: check_updates
@@ -212,7 +212,7 @@ runs:
         if [ "$RELOCK" = "true" ]; then
           rm -f package-lock.json
         fi
-        npm install
+        npm install --ignore-scripts
 
     - name: Check for changes
       id: check_changes

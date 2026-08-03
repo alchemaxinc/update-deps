@@ -120,18 +120,18 @@ runs:
         done
 
         if [ "${#args[@]}" -gt 0 ]; then
-          pnpm update --latest '*' "${args[@]}"
+          pnpm update --latest --ignore-scripts '*' "${args[@]}"
         else
-          pnpm update --latest
+          pnpm update --latest --ignore-scripts
         fi
 
         if [ "$RELOCK" = "true" ]; then
           # Keep existing optional dependencies for other platforms. A fresh
           # lockfile generated on one runner can omit them.
-          pnpm install --no-frozen-lockfile
+          pnpm install --ignore-scripts --no-frozen-lockfile
         fi
 
-        pnpm install --frozen-lockfile
+        pnpm install --ignore-scripts --frozen-lockfile
 
     - name: Collect update records
       id: collect_updates
