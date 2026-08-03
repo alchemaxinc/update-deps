@@ -121,14 +121,31 @@ runs:
       with:
         toolchain: ${{ steps.current_version.outputs.version }}
 
+    - name: Cache Cargo upgrade tooling
+      id: cache-cargo-edit
+      if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
+      uses: actions/cache@v6
+      env:
+        CARGO_EDIT_VERSION: '0.13.7'
+      with:
+        path: ~/.cache/ci-tools/cargo-edit/${{ env.CARGO_EDIT_VERSION }}
+        key: v1-cargo-edit-${{ runner.os }}-${{ runner.arch }}-${{ env.CARGO_EDIT_VERSION }}
+
     - name: Install Cargo upgrade tooling
+      if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true' && steps.cache-cargo-edit.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        CARGO_EDIT_VERSION: '0.13.7'
+      run: |
+        CARGO_EDIT_HOME="$HOME/.cache/ci-tools/cargo-edit/$CARGO_EDIT_VERSION"
+        cargo install cargo-edit --version "$CARGO_EDIT_VERSION" --locked --root "$CARGO_EDIT_HOME"
+
+    - name: Add Cargo upgrade tooling to PATH
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
-      run: |
-        if ! cargo upgrade --help >/dev/null 2>&1; then
-          cargo install cargo-edit --locked
-          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
-        fi
+      env:
+        CARGO_EDIT_VERSION: '0.13.7'
+      run: echo "$HOME/.cache/ci-tools/cargo-edit/$CARGO_EDIT_VERSION/bin" >> "$GITHUB_PATH"
 
     - name: Get latest stable Rust version
       id: latest_version

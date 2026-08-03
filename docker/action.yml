@@ -114,6 +114,7 @@ runs:
         PYTHON_VERSION: '3.14'
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+        cache: pip
         cache-dependency-path: ${{ github.action_path }}/requirements.txt
 
     - name: Install dependencies

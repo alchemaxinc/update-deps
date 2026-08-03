@@ -100,11 +100,18 @@ jobs:
         uses: actions/cache@v6
         id: cache-black
         with:
-          path: ~/.cache/pip
-          key: v1-black-${{ env.BLACK_VERSION }}
+          path: ~/.cache/ci-tools/black/${{ env.BLACK_VERSION }}
+          key: v1-black-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}-${{ env.BLACK_VERSION }}
 
       - name: Install Black
-        run: pip install black==${{ env.BLACK_VERSION }}
+        if: steps.cache-black.outputs.cache-hit != 'true'
+        run: |
+          BLACK_HOME="$HOME/.cache/ci-tools/black/${{ env.BLACK_VERSION }}"
+          python -m venv "$BLACK_HOME"
+          "$BLACK_HOME/bin/pip" install black==${{ env.BLACK_VERSION }}
+
+      - name: Add Black to PATH
+        run: echo "$HOME/.cache/ci-tools/black/${{ env.BLACK_VERSION }}/bin" >> "$GITHUB_PATH"
 
       - name: Run Black check
         run: black --check .
@@ -119,8 +126,22 @@ jobs:
         with:
           python-version: '${{ env.PYTHON_VERSION }}'
 
+      - name: Cache Ruff
+        uses: actions/cache@v6
+        id: cache-ruff
+        with:
+          path: ~/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}
+          key: v1-ruff-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}-${{ env.RUFF_VERSION }}
+
       - name: Install Ruff
-        run: python -m pip install ruff==${{ env.RUFF_VERSION }}
+        if: steps.cache-ruff.outputs.cache-hit != 'true'
+        run: |
+          RUFF_HOME="$HOME/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}"
+          python -m venv "$RUFF_HOME"
+          "$RUFF_HOME/bin/pip" install ruff==${{ env.RUFF_VERSION }}
+
+      - name: Add Ruff to PATH
+        run: echo "$HOME/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}/bin" >> "$GITHUB_PATH"
 
       - name: Run Ruff correctness checks
         run: ruff check .
@@ -130,40 +151,62 @@ jobs:
     steps:
       - *checkout-code
 
+      - name: Cache Actionlint
+        id: cache-actionlint
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ci-tools/actionlint/${{ env.ACTIONLINT_VERSION }}
+          key: v1-actionlint-${{ runner.os }}-${{ runner.arch }}-${{ env.ACTIONLINT_VERSION }}
+
       - name: Install Actionlint
+        if: steps.cache-actionlint.outputs.cache-hit != 'true'
         env:
           VERSION: ${{ env.ACTIONLINT_VERSION }}
         run: |
           archive="$RUNNER_TEMP/actionlint.tar.gz"
-          install_dir="$RUNNER_TEMP/actionlint"
+          install_dir="$HOME/.cache/ci-tools/actionlint/$VERSION"
           curl --fail --location --retry 3 --silent --show-error \
             "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz" \
             --output "$archive"
           mkdir -p "$install_dir"
           tar -xzf "$archive" -C "$install_dir" actionlint
 
+      - name: Add Actionlint to PATH
+        run: echo "$HOME/.cache/ci-tools/actionlint/${{ env.ACTIONLINT_VERSION }}" >> "$GITHUB_PATH"
+
       - name: Run Actionlint
-        run: '$RUNNER_TEMP/actionlint/actionlint -color'
+        run: actionlint -color
 
   run-shellcheck:
     runs-on: ubuntu-latest
     steps:
       - *checkout-code
 
+      - name: Cache ShellCheck
+        id: cache-shellcheck
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ci-tools/shellcheck/${{ env.SHELLCHECK_VERSION }}
+          key: v1-shellcheck-${{ runner.os }}-${{ runner.arch }}-${{ env.SHELLCHECK_VERSION }}
+
       - name: Install ShellCheck
+        if: steps.cache-shellcheck.outputs.cache-hit != 'true'
         env:
           VERSION: ${{ env.SHELLCHECK_VERSION }}
         run: |
           archive="$RUNNER_TEMP/shellcheck.tar.xz"
-          install_dir="$RUNNER_TEMP/shellcheck"
+          install_dir="$HOME/.cache/ci-tools/shellcheck/$VERSION"
           curl --fail --location --retry 3 --silent --show-error \
             "https://github.com/koalaman/shellcheck/releases/download/v${VERSION}/shellcheck-v${VERSION}.linux.x86_64.tar.xz" \
             --output "$archive"
           mkdir -p "$install_dir"
           tar -xJf "$archive" -C "$install_dir" --strip-components=1
 
+      - name: Add ShellCheck to PATH
+        run: echo "$HOME/.cache/ci-tools/shellcheck/${{ env.SHELLCHECK_VERSION }}" >> "$GITHUB_PATH"
+
       - name: Run ShellCheck
-        run: git ls-files '*.sh' | xargs --no-run-if-empty "$RUNNER_TEMP/shellcheck/shellcheck"
+        run: git ls-files '*.sh' | xargs --no-run-if-empty shellcheck
 
   install-cspell:
     runs-on: ubuntu-latest
@@ -220,6 +263,10 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            actions/requirements.txt
+            docker/requirements.txt
 
       - name: Install dependencies
         if: matrix.has-requirements
