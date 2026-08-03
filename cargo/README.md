@@ -63,7 +63,6 @@ jobs:
 | `skip-if-pr-exists`   | Skip creating a new PR if an open PR with the same title already exists on the base branch                   | :x:                | `false`                     |
 | `update-toolchain`    | Whether to update the Rust toolchain version                                                                 | :x:                | `true`                      |
 | `update-deps`         | Whether to update Cargo dependencies                                                                         | :x:                | `true`                      |
-| `keep-build-metadata` | Preserve SemVer build metadata (the `+...` suffix, e.g. `0.9.34+deprecated`) in written version requirements | :x:                | `false`                     |
 | `dry-run`             | Run without creating a PR                                                                                    | :x:                | `false`                     |
 
 ## :mag: How It Works
@@ -74,9 +73,7 @@ The action fetches the latest stable Rust release from the GitHub API and compar
 
 ### Dependency Updates
 
-The action auto-discovers all `Cargo.toml` files in the repository (excluding `target/` directories), updates direct dependency version requirements to the latest stable crates.io versions, and runs `cargo update` for each manifest. This refreshes matching `Cargo.lock` files after the manifest changes.
-
-By default, SemVer build metadata (the `+...` suffix, e.g. `serde_yaml`'s `0.9.34+deprecated`) is stripped from written version requirements. Cargo ignores build metadata when resolving dependencies, so writing it into a manifest adds no value and produces a phantom "update" on every run. Set `keep-build-metadata: 'true'` to preserve it verbatim.
+The action auto-discovers all `Cargo.toml` files in the repository (excluding `target/` directories), uses Cargo's native `cargo upgrade` command to update direct dependency requirements, and runs `cargo update` for each manifest. This refreshes matching `Cargo.lock` files after the manifest changes. Cargo handles version-requirement syntax, renamed dependencies, and formatting-preserving edits; older toolchains automatically install `cargo-edit` to provide the same command.
 
 ## :warning: Prerequisites
 
