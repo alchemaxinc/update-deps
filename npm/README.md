@@ -1,52 +1,103 @@
-# Update NPM Dependencies :package:
+# NPM dependency update actions
 
-This GitHub Action automatically updates NPM dependencies using `npm-check-updates` and creates a pull request with the
-changes.
+Use the split actions to resolve dependency updates without write credentials,
+then create the pull request in a separate job. `npm/resolve` has no token
+input and does not check out code, push, or create pull requests. It disables
+lifecycle scripts for both the `npm-check-updates` installation and the lockfile
+update.
 
-## :rocket: Usage
+## Recommended credential-isolated workflow
 
 ```yaml
 name: Update NPM Dependencies
+
 on:
   schedule:
-    - cron: '0 2 * * 1' # Run every Monday at 2 AM
-  workflow_dispatch: # Allow manual trigger
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
 
 jobs:
-  update-dependencies:
+  resolve:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      has_changes: ${{ steps.resolve.outputs.has_changes }}
+      patch_file: ${{ steps.resolve.outputs.patch_file }}
+      files: ${{ steps.resolve.outputs.files }}
+      pr_body: ${{ steps.resolve.outputs.pr_body }}
     steps:
-      - name: Update NPM Dependencies
-        uses: alchemaxinc/update-deps/npm@v2.10.5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - id: resolve
+        uses: alchemaxinc/update-deps/npm/resolve@v3
+      - if: steps.resolve.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: npm-dependency-update
+          path: ${{ steps.resolve.outputs.patch_file }}
+          if-no-files-found: error
+
+  create-pr:
+    needs: resolve
+    if: needs.resolve.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: npm-dependency-update
+          path: ${{ runner.temp }}
+      - run: git apply --index "$RUNNER_TEMP/npm-dependency-update.patch"
+      - uses: alchemaxinc/update-deps/npm/create-pr@v3
         with:
           token: ${{ github.token }}
-          base-branch: 'main'
-          branch-prefix: 'update-npm-deps'
+          base-branch: main
+          branch-prefix: update-npm-deps
           pr-title: 'Update NPM Dependencies'
           commit-message: 'Update NPM dependencies'
-          excluded-packages: 'package1,package2'
-          relock: false
+          pr-body: ${{ needs.resolve.outputs.pr_body }}
+          files: ${{ needs.resolve.outputs.files }}
 ```
 
-## :gear: Inputs
+The artifact is a binary Git patch containing only `package.json` and
+`package-lock.json` changes. The privileged job checks out the protected base
+branch, applies that patch, and does not execute package-management commands.
+Do not add untrusted files to this artifact or run untrusted code in the
+privileged job.
 
-| Input               | Description                                                                                | Required           | Default                   |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                    |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`     |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`     |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update NPM Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update NPM dependencies` |
-| `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                         |
-| `relock`            | Whether `package-lock.json` should be regenerated                                          | :x:                | `false`                   |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                   |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
+## Split action inputs
 
-## :warning: Prerequisites
+### `npm/resolve`
 
-- Your repository must have a `package.json` file
-- Node.js version should be specified in `.nvmrc` file
-- The action requires write permissions to create branches and pull requests
+| Input                       | Description                                                      | Default  |
+| --------------------------- | ---------------------------------------------------------------- | -------- |
+| `excluded-packages`         | Comma-separated packages to exclude                              | -        |
+| `npm-check-updates-version` | Exact `npm-check-updates` version                                | `23.0.1` |
+| `relock`                    | Regenerate `package-lock.json` without version changes when true | `false`  |
+
+It outputs `has_changes`, `patch_file`, newline-separated changed `files`, and
+a JSON-encoded `pr_body`.
+
+### `npm/create-pr`
+
+The PR action must run only after the patch is applied to a checkout of the
+base branch. Its required `token` needs `contents: write` and
+`pull-requests: write`. It accepts `base-branch`, `branch-prefix`, `pr-title`,
+`commit-message`, `pr-body`, `files`, `auto-merge`, `merge-method`, and
+`skip-if-pr-exists`.
+
+## Legacy combined action (deprecated)
+
+`alchemaxinc/update-deps/npm@v2` remains available for compatibility, but it
+resolves dependencies and creates a PR in the same job. It is **not**
+credential-isolated and its `token` defaults to `${{ github.token }}`. New
+workflows must use the split actions above. Existing inputs remain documented
+in [`action.yml`](./action.yml).

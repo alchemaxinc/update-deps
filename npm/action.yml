@@ -1,6 +1,6 @@
-name: 'Update NPM Dependencies'
+name: 'Update NPM Dependencies (Legacy)'
 
-description: 'Update NPM dependencies using npm-check-updates'
+description: 'DEPRECATED: combined NPM update and PR action; use npm/resolve and npm/create-pr for credential isolation'
 
 inputs:
   token:
@@ -64,12 +64,17 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree; use npm/resolve instead'
     default: 'false'
 
 runs:
   using: 'composite'
   steps:
+    - name: Warn about legacy credential boundary
+      shell: bash
+      run: |
+        echo "::warning::This legacy action resolves dependencies and creates a PR in one job. It is not credential-isolated. Use npm/resolve in an unprivileged job and npm/create-pr in a separate privileged job."
+
     - name: Validate merge method
       uses: alchemaxinc/composite-toolbox/validate-merge-method@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:

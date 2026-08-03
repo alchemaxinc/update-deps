@@ -222,6 +222,8 @@ jobs:
   test-npm:
     name: Test NPM Dependencies Updater
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - *checkout-code
 
@@ -232,13 +234,13 @@ jobs:
           cp npm/test/.nvmrc .
 
       - name: Test NPM dependencies updater
-        uses: ./npm
-        with:
-          dry-run: 'true'
+        uses: ./npm/resolve
 
   test-pnpm:
     name: Test pnpm Dependencies Updater
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - *checkout-code
 
@@ -249,9 +251,7 @@ jobs:
           cp pnpm/test/.nvmrc .
 
       - name: Test pnpm dependencies updater
-        uses: ./pnpm
-        with:
-          dry-run: 'true'
+        uses: ./pnpm/resolve
 
   test-cargo:
     name: Test Cargo Dependencies Updater
@@ -272,15 +272,15 @@ jobs:
   test-terraform:
     name: Test Terraform Dependencies Updater
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - *checkout-code
 
       - name: Test Terraform dependencies updater
-        uses: ./terraform
+        uses: ./terraform/resolve
         with:
-          dry-run: 'true'
           working-dir: 'terraform/test'
-          var-file-path: 'test.tfvars'
 
   test-docker:
     name: Test Docker Images Updater

@@ -1,6 +1,6 @@
-name: 'Update Terraform Dependencies'
+name: 'Update Terraform Dependencies (Legacy)'
 
-description: 'Update Terraform dependencies'
+description: 'DEPRECATED: combined Terraform update and PR action; use terraform/resolve and terraform/create-pr for credential isolation'
 
 inputs:
   token:
@@ -30,7 +30,7 @@ inputs:
 
   backend-config:
     required: false
-    description: 'Backend configuration value to pass to `terraform init -backend-config=<backend-config>` if needed, otherwise ignore'
+    description: 'Legacy-only backend configuration passed to terraform init; terraform/resolve always disables the backend'
 
   var-file-path:
     required: false
@@ -62,12 +62,17 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree; use terraform/resolve instead'
     default: 'false'
 
 runs:
   using: 'composite'
   steps:
+    - name: Warn about legacy credential boundary
+      shell: bash
+      run: |
+        echo "::warning::This legacy action resolves and validates Terraform before creating a PR in one job. It is not credential-isolated and can initialize a configured backend. Use terraform/resolve in an unprivileged job and terraform/create-pr in a separate privileged job."
+
     - name: Validate merge method
       uses: alchemaxinc/composite-toolbox/validate-merge-method@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
@@ -110,7 +115,7 @@ runs:
       if: steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       working-directory: ${{ inputs.working-dir }}
-      run: terraform version -json > /tmp/terraform_versions.json
+      run: terraform version -json > "$RUNNER_TEMP/terraform_versions.json"
 
     - name: Update Terraform dependencies
       id: update_deps
@@ -119,7 +124,7 @@ runs:
       env:
         ACTION_PATH: ${{ github.action_path }}
         WORKING_DIR: ${{ inputs.working-dir }}
-      run: python "$ACTION_PATH/scripts/update_provider_versions.py" "$WORKING_DIR" /tmp/terraform_versions.json
+      run: python3 "$ACTION_PATH/scripts/update_provider_versions.py" "$WORKING_DIR" "$RUNNER_TEMP/terraform_versions.json"
 
     - name: Upgrade provider lock file
       if: steps.check_existing_pr.outputs.exists != 'true'
