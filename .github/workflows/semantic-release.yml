@@ -22,43 +22,25 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
-      - name: Get current year and month for caching
-        id: date
-        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
-
-      - name: Cache semantic-release tools
-        id: cache-semantic-release
-        uses: actions/cache@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          path: ~/.npm-semantic-release
-          key: npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
-          restore-keys: |
-            npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
-            npm-semantic-release-${{ runner.os }}-
+          node-version: '24.10.0'
+          cache: npm
 
-      - name: Install semantic-release and plugins
-        if: steps.cache-semantic-release.outputs.cache-hit != 'true'
-        run: |
-          npm config set prefix ~/.npm-semantic-release
-          npm install -g \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/npm \
-            @semantic-release/github
-
-      - name: Add semantic-release to PATH
-        run: echo "$HOME/.npm-semantic-release/bin" >> $GITHUB_PATH
+      - name: Install locked release tooling
+        run: npm ci --ignore-scripts
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: semantic-release
+        run: npx --no-install semantic-release
 
   semantic-release-flowing-tags:
     name: Add flowing tags
@@ -71,10 +53,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
       - name: Get latest tag
         id: latest-tag
