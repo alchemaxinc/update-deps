@@ -176,6 +176,37 @@ class TestUpdateProviderVersions(unittest.TestCase):
 
             self.assertEqual(ctx.exception.code, 1)
 
+    def test_ignores_generated_terraform_directories(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workdir = Path(tmpdir)
+            versions_path = workdir / "versions.json"
+            generated = workdir / ".terraform" / "modules" / "example"
+            generated.mkdir(parents=True)
+            versions_path.write_text(
+                json.dumps(
+                    {
+                        "provider_selections": {
+                            "registry.terraform.io/hashicorp/aws": "5.0.0"
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            generated_tf = generated / "main.tf"
+            generated_tf.write_text(
+                'terraform { required_providers { aws = { source = "hashicorp/aws", version = "~> 5.0" } } }\n',
+                encoding="utf-8",
+            )
+
+            mock_result = mock.Mock(returncode=0, stdout='{"version": "5.2.1"}')
+            with mock.patch.object(module.subprocess, "run", return_value=mock_result):
+                with mock.patch.object(
+                    sys, "argv", ["script", str(workdir), str(versions_path)]
+                ):
+                    module.main()
+
+            self.assertIn('version = "~> 5.0"', generated_tf.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -150,6 +150,13 @@ def main():
     # Update .tf files with new versions
     tf_files = []
     for root, dirs, files in os.walk(working_dir):
+        # Terraform writes downloaded providers and copied modules below
+        # .terraform; these are generated, not user configuration.
+        dirs[:] = [
+            directory
+            for directory in dirs
+            if directory not in {".terraform", ".git", "terraform.tfstate.d"}
+        ]
         for file in files:
             if file.endswith(".tf"):
                 tf_files.append(os.path.join(root, file))

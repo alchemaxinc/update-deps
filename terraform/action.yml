@@ -144,7 +144,7 @@ runs:
       if: steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       working-directory: ${{ inputs.working-dir }}
-      run: terraform fmt -write
+      run: terraform fmt -recursive -write
 
     - name: Build PR description
       id: build_pr_body
