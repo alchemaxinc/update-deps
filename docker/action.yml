@@ -36,7 +36,7 @@ inputs:
   compose-glob:
     required: false
     description: 'Glob (relative to repo root) for docker-compose files'
-    default: '**/docker-compose*.y*ml'
+    default: '**/*compose*.y*ml'
 
   markdown-glob:
     required: false
