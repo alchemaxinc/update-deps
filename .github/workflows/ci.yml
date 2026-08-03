@@ -193,6 +193,10 @@ jobs:
     steps:
       - *checkout-code
 
+      - name: Test CircleCI orb action configuration
+        working-directory: circleci-orbs
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
       - name: Test CircleCI orbs updater
         uses: ./circleci-orbs
         with:

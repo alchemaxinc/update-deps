@@ -5,7 +5,7 @@ changes.
 
 > [!IMPORTANT]  
 > This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It
-> fetches the latest releases from the corresponding GitHub repositories.
+> fetches the latest published versions directly from the CircleCI Public orb registry.
 
 ## :rocket: Usage
 
@@ -41,7 +41,7 @@ jobs:
 | `pr-title`             | Title for the pull request                                                                 | :x:                | `Update CircleCI Orbs` |
 | `commit-message`       | Commit message for the update                                                              | :x:                | `Update CircleCI orbs` |
 | `circleci-config-file` | Path to CircleCI config file                                                               | :x:                | `.circleci/config.yml` |
-| `yq-version`           | Version of yq tool to use                                                                  | :x:                | `v4.44.1`              |
+| `yq-version`           | Version of yq tool to use (must have a pinned checksum)                                    | :x:                | `v4.44.1`              |
 | `app-slug`             | GitHub App slug for commit attribution                                                     | :x:                | -                      |
 | `auto-merge`           | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                |
 | `merge-method`         | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                |
@@ -53,3 +53,4 @@ jobs:
 - Your repository must have a CircleCI configuration file (`.circleci/config.yml` by default)
 - The configuration must contain orbs from the CircleCI Public orb registry
 - The action requires write permissions to create branches and pull requests
+- Linux and macOS runners with x86_64 or arm64 CPUs are supported. The downloaded yq binary is SHA-256 verified.
