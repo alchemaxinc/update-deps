@@ -148,11 +148,10 @@ runs:
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
-        manifests=$(find . -name Cargo.toml -not -path '*/target/*' | sort)
-        echo "manifests<<EOF" >> "$GITHUB_OUTPUT"
-        echo "$manifests" >> "$GITHUB_OUTPUT"
-        echo "EOF" >> "$GITHUB_OUTPUT"
-        echo "::notice::Discovered Cargo manifests: $(echo "$manifests" | tr '\n' ' ')"
+        manifests_file="$RUNNER_TEMP/cargo-manifests"
+        find . -name Cargo.toml -not -path '*/target/*' -print0 | sort -z > "$manifests_file"
+        echo "manifests_file=$manifests_file" >> "$GITHUB_OUTPUT"
+        echo "::notice::Discovered $(tr -cd '\0' < "$manifests_file" | wc -c | tr -d ' ') Cargo manifests"
 
     - name: Update Cargo.toml dependencies
       id: update_deps
@@ -161,16 +160,15 @@ runs:
       run: |
         python3 "${{ github.action_path }}/scripts/update_cargo_deps.py" \
           ${{ inputs.keep-build-metadata == 'true' && '--keep-build-metadata' || '' }} \
-          $(echo '${{ steps.discover.outputs.manifests }}' | tr '\n' ' ')
+          --manifests-file "${{ steps.discover.outputs.manifests_file }}"
 
     - name: Refresh Cargo.lock files
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
-        while IFS= read -r manifest; do
-          [ -z "$manifest" ] && continue
+        while IFS= read -r -d '' manifest; do
           cargo update --manifest-path "$manifest"
-        done <<< "${{ steps.discover.outputs.manifests }}"
+        done < "${{ steps.discover.outputs.manifests_file }}"
 
     - name: Collect modified files
       if: steps.check_existing_pr.outputs.exists != 'true'
@@ -180,14 +178,13 @@ runs:
         files="rust-toolchain.toml"
 
         if [ "${{ inputs.update-deps }}" = "true" ]; then
-          while IFS= read -r manifest; do
-            [ -z "$manifest" ] && continue
+          while IFS= read -r -d '' manifest; do
             dir=$(dirname "$manifest")
             files+=" $manifest"
             if [ -f "$dir/Cargo.lock" ]; then
               files+=" $dir/Cargo.lock"
             fi
-          done <<< "${{ steps.discover.outputs.manifests }}"
+          done < "${{ steps.discover.outputs.manifests_file }}"
         fi
 
         echo "files=$files" >> "$GITHUB_OUTPUT"

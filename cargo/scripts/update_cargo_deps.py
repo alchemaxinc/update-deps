@@ -149,6 +149,11 @@ def main():
         help="Paths to Cargo.toml files to update",
     )
     parser.add_argument(
+        "--manifests-file",
+        type=argparse.FileType("rb"),
+        help="NUL-delimited file containing paths to Cargo.toml files to update",
+    )
+    parser.add_argument(
         "--keep-build-metadata",
         action="store_true",
         help=(
@@ -160,6 +165,10 @@ def main():
     args = parser.parse_args()
 
     manifests = args.manifests
+    if args.manifests_file:
+        manifests.extend(
+            path.decode() for path in args.manifests_file.read().split(b"\0") if path
+        )
     if not manifests:
         print("::warning::No Cargo.toml files provided")
         return
