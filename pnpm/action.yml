@@ -66,13 +66,13 @@ runs:
   using: 'composite'
   steps:
     - name: Validate merge method
-      uses: alchemaxinc/composite-toolbox/validate-merge-method@v1
+      uses: alchemaxinc/composite-toolbox/validate-merge-method@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         merge-method: ${{ inputs.merge-method }}
 
     - name: Checkout and setup
       if: inputs.dry-run != 'true'
-      uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+      uses: alchemaxinc/composite-toolbox/checkout-and-setup@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         token: ${{ inputs.token }}
         app-slug: ${{ inputs.app-slug }}
@@ -80,7 +80,7 @@ runs:
     - name: Check for existing pull request
       id: check_existing_pr
       if: inputs.dry-run != 'true' && inputs.skip-if-pr-exists == 'true'
-      uses: alchemaxinc/composite-toolbox/check-existing-pr@v1
+      uses: alchemaxinc/composite-toolbox/check-existing-pr@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         token: ${{ inputs.token }}
         pr-title: ${{ inputs.pr-title }}
@@ -88,11 +88,11 @@ runs:
 
     - name: Setup pnpm
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: pnpm/action-setup@v6
+      uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
 
     - name: Setup Node.js
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: actions/setup-node@v7
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
       with:
         cache: 'pnpm'
         node-version-file: '.nvmrc'
@@ -192,14 +192,14 @@ runs:
     - name: Check for changes
       id: check_changes
       if: inputs.dry-run != 'true' && steps.check_existing_pr.outputs.exists != 'true'
-      uses: alchemaxinc/composite-toolbox/check-changes@v1
+      uses: alchemaxinc/composite-toolbox/check-changes@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         files: ${{ steps.files.outputs.files }}
 
     - name: Create Pull Request
       id: open-pr
       if: inputs.dry-run != 'true' && steps.check_changes.outputs.has_changes == 'true' && steps.check_existing_pr.outputs.exists != 'true'
-      uses: alchemaxinc/composite-toolbox/create-pr@v1
+      uses: alchemaxinc/composite-toolbox/create-pr@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         token: ${{ inputs.token }}
         base-branch: ${{ inputs.base-branch }}
@@ -211,7 +211,7 @@ runs:
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'
-      uses: alchemaxinc/composite-toolbox/merge-pr@v1
+      uses: alchemaxinc/composite-toolbox/merge-pr@5000c1f31a895dfa69287e07b84136a3ac4efe77
       with:
         token: ${{ inputs.token }}
         pull-request-number: ${{ steps.open-pr.outputs.pr_number }}

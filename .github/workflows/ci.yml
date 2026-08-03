@@ -27,12 +27,12 @@ jobs:
     steps:
       - &checkout-code
         name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - &cache-commitlint
         name: Cache Commitlint
         id: cache-commitlint
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: node_modules
           key: v4-commitlint-${{ env.COMMITLINT_CLI_VERSION }}
@@ -46,7 +46,7 @@ jobs:
     needs: install-commitlint
     steps:
       - name: Checkout code (full)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -66,7 +66,7 @@ jobs:
       - &cache-prettier
         name: Cache Prettier
         id: cache-prettier
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: node_modules
           key: v1-prettier-${{ env.PRETTIER_VERSION }}
@@ -91,12 +91,12 @@ jobs:
       - *checkout-code
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '${{ env.PYTHON_VERSION }}'
 
       - name: Cache Black
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         id: cache-black
         with:
           path: ~/.cache/pip
@@ -116,7 +116,7 @@ jobs:
       - &cache-cspell
         name: Cache CSpell
         id: cache-cspell
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: node_modules
           key: v1-cspell-${{ env.CSPELL_VERSION }}
@@ -160,7 +160,7 @@ jobs:
       - *checkout-code
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
