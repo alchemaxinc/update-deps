@@ -106,7 +106,7 @@ runs:
     - name: Add yq to PATH
       if: steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
-      run: echo "~/.local/bin" >> $GITHUB_PATH
+      run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Update CircleCI Orbs
       id: update_orbs
