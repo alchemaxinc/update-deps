@@ -289,10 +289,11 @@ jobs:
         uses: ./actions
         with:
           dry-run: 'true'
+          base-branch: main
           file-glob: 'actions/test/.github/**/*.yml'
 
-      - name: Verify dry run did not modify workflows
-        run: git diff --exit-code -- actions/test/.github
+      - name: Verify action fixture
+        run: bash actions/test/verify-dry-run.sh
 
   test-circleci-orbs:
     name: Test CircleCI Orbs Updater
@@ -308,10 +309,11 @@ jobs:
         uses: ./circleci-orbs
         with:
           dry-run: 'true'
+          base-branch: main
           circleci-config-file: 'circleci-orbs/test/.circleci/config.yml'
 
-      - name: Verify dry run did not modify CircleCI configuration
-        run: git diff --exit-code -- circleci-orbs/test/.circleci/config.yml
+      - name: Verify CircleCI fixture
+        run: bash circleci-orbs/test/verify-dry-run.sh
 
   test-golang:
     name: Test Go Dependencies Updater
@@ -328,14 +330,10 @@ jobs:
         uses: ./golang
         with:
           dry-run: 'true'
+          base-branch: main
 
-      - name: Verify Go dry run updated the fixture
-        run: |
-          if cmp -s golang/test/go.mod go.mod; then
-            echo "::error::Go dependency dry run did not update go.mod"
-            exit 1
-          fi
-          go list -m golang.org/x/text
+      - name: Verify Go fixture
+        run: bash golang/test/verify-update.sh
 
   test-npm:
     name: Test NPM Dependencies Updater
@@ -352,24 +350,13 @@ jobs:
           cp npm/test/.nvmrc .
 
       - name: Test NPM dependencies updater
-        id: npm-resolve
         uses: ./npm
         with:
           dry-run: 'true'
+          base-branch: main
 
-      - name: Verify NPM resolution output
-        env:
-          FILES: ${{ steps.npm-resolve.outputs.files }}
-          HAS_CHANGES: ${{ steps.npm-resolve.outputs.has_changes }}
-          PATCH_FILE: ${{ steps.npm-resolve.outputs.patch_file }}
-          PR_BODY: ${{ steps.npm-resolve.outputs.pr_body }}
-        run: |
-          [ "$HAS_CHANGES" = 'true' ]
-          [ -s "$PATCH_FILE" ]
-          printf '%s\n' "$FILES" | grep -Fx 'package.json'
-          printf '%s\n' "$FILES" | grep -Fx 'package-lock.json'
-          node -e 'JSON.parse(process.env.PR_BODY)'
-          node -e 'if (require("./package.json").dependencies.lodash === "^4.17.0") process.exit(1)'
+      - name: Verify NPM fixture
+        run: bash npm/test/verify-update.sh
 
   test-pnpm:
     name: Test pnpm Dependencies Updater
@@ -384,24 +371,13 @@ jobs:
           cp pnpm/test/.nvmrc .
 
       - name: Test pnpm dependencies updater
-        id: pnpm-resolve
         uses: ./pnpm
         with:
           dry-run: 'true'
+          base-branch: main
 
-      - name: Verify pnpm resolution output
-        env:
-          FILES: ${{ steps.pnpm-resolve.outputs.files }}
-          HAS_CHANGES: ${{ steps.pnpm-resolve.outputs.has_changes }}
-          PATCH_FILE: ${{ steps.pnpm-resolve.outputs.patch_file }}
-          PR_BODY: ${{ steps.pnpm-resolve.outputs.pr_body }}
-        run: |
-          [ "$HAS_CHANGES" = 'true' ]
-          [ -s "$PATCH_FILE" ]
-          printf '%s\n' "$FILES" | grep -Fx 'package.json'
-          printf '%s\n' "$FILES" | grep -Fx 'pnpm-lock.yaml'
-          node -e 'JSON.parse(process.env.PR_BODY)'
-          node -e 'if (require("./package.json").dependencies.lodash === "^4.17.0") process.exit(1)'
+      - name: Verify pnpm fixture
+        run: bash pnpm/test/verify-update.sh
 
   test-cargo:
     name: Test Cargo Dependencies Updater
@@ -418,17 +394,10 @@ jobs:
         uses: ./cargo
         with:
           dry-run: 'true'
+          base-branch: main
 
-      - name: Verify Cargo dry run updated the fixture
-        run: |
-          if cmp -s cargo/test/rust-toolchain.toml rust-toolchain.toml; then
-            echo "::error::Cargo dependency dry run did not update rust-toolchain.toml"
-            exit 1
-          fi
-          if cmp -s cargo/test/wrapper/Cargo.toml wrapper/Cargo.toml; then
-            echo "::error::Cargo dependency dry run did not update wrapper/Cargo.toml"
-            exit 1
-          fi
+      - name: Verify Cargo fixture
+        run: bash cargo/test/verify-update.sh
 
   test-terraform:
     name: Test Terraform Dependencies Updater
@@ -437,25 +406,15 @@ jobs:
       - *checkout-code
 
       - name: Test Terraform dependencies updater
-        id: terraform-resolve
         uses: ./terraform
         with:
           dry-run: 'true'
+          base-branch: main
           working-dir: 'terraform/test'
           var-file-path: 'test.tfvars'
 
-      - name: Verify Terraform resolution output
-        env:
-          FILES: ${{ steps.terraform-resolve.outputs.files }}
-          HAS_CHANGES: ${{ steps.terraform-resolve.outputs.has_changes }}
-          PATCH_FILE: ${{ steps.terraform-resolve.outputs.patch_file }}
-          PR_BODY: ${{ steps.terraform-resolve.outputs.pr_body }}
-        run: |
-          [ "$HAS_CHANGES" = 'true' ]
-          [ -s "$PATCH_FILE" ]
-          printf '%s\n' "$FILES" | grep -Fx 'terraform/test/main.tf'
-          printf '%s\n' "$FILES" | grep -Fx 'terraform/test/.terraform.lock.hcl'
-          node -e 'JSON.parse(process.env.PR_BODY)'
+      - name: Verify Terraform fixture
+        run: bash terraform/test/verify-update.sh
 
   test-docker:
     name: Test Docker Images Updater
@@ -472,11 +431,10 @@ jobs:
         uses: ./docker
         with:
           dry-run: 'true'
+          base-branch: main
 
-      - name: Verify dry run did not modify Docker fixtures
-        run: |
-          cmp docker/test/Dockerfile Dockerfile
-          cmp docker/test/docker-compose.yml docker-compose.yml
+      - name: Verify Docker fixture
+        run: bash docker/test/verify-dry-run.sh
 
   ci-passed:
     name: CI Passed
