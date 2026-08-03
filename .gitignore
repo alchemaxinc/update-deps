@@ -4,3 +4,10 @@
 __pycache__/
 *.pyc
 node_modules/
+.terraform/
+*.tfstate
+*.tfstate.*
+coverage/
+.coverage
+.pytest_cache/
+.mypy_cache/
