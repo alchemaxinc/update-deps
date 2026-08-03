@@ -130,15 +130,20 @@ runs:
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
       uses: actions/cache@v6
       with:
-        path: ~/.cache/ci-tools/cargo-edit/${{ env.CARGO_EDIT_VERSION }}
-        key: v1-cargo-edit-${{ runner.os }}-${{ runner.arch }}-${{ env.CARGO_EDIT_VERSION }}
+        path: |
+          ~/.cache/ci-tools/cargo-edit/${{ env.CARGO_EDIT_VERSION }}
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: v2-cargo-edit-${{ runner.os }}-${{ runner.arch }}-${{ env.CARGO_EDIT_VERSION }}
 
     - name: Install Cargo upgrade tooling
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true' && steps.cache-cargo-edit.outputs.cache-hit != 'true'
       shell: bash
       run: |
         CARGO_EDIT_HOME="$HOME/.cache/ci-tools/cargo-edit/$CARGO_EDIT_VERSION"
-        cargo install cargo-edit --version "$CARGO_EDIT_VERSION" --locked --root "$CARGO_EDIT_HOME"
+        cargo install cargo-edit --version "$CARGO_EDIT_VERSION" --locked \
+          --root "$CARGO_EDIT_HOME" \
+          --target-dir "$CARGO_EDIT_HOME/target"
 
     - name: Add Cargo upgrade tooling to PATH
       if: inputs.update-deps == 'true' && steps.check_existing_pr.outputs.exists != 'true'
