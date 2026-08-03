@@ -120,10 +120,14 @@ runs:
         RELOCK: ${{ inputs.relock }}
       run: |
         export PATH=~/.npm-global/bin:$PATH
-        ncu_output=$(ncu --reject "$EXCLUDED_PACKAGES" 2>/dev/null || true)
-        update_lines=$(echo "$ncu_output" | grep -E '^\s*\S+\s+\S+\s+→\s+\S+' || true)
+        cp package.json "$RUNNER_TEMP/npm-package-before.json"
+        updates_json="$RUNNER_TEMP/npm-updates.json"
+        if ! ncu --jsonUpgraded --reject "$EXCLUDED_PACKAGES" > "$updates_json"; then
+          echo "::error::npm-check-updates failed while resolving package updates"
+          exit 1
+        fi
 
-        if [ -z "$update_lines" ]; then
+        if ! node -e 'const fs = require("fs"); process.exit(Object.keys(JSON.parse(fs.readFileSync(process.argv[1], "utf8"))).length ? 0 : 1)' "$updates_json"; then
           echo "has_updates=false" >> "$GITHUB_OUTPUT"
           if [ "$RELOCK" = "true" ]; then
             echo "::notice::No package updates available; relocking package-lock.json"
@@ -137,11 +141,6 @@ runs:
 
         echo "has_updates=true" >> "$GITHUB_OUTPUT"
         echo "should_install=true" >> "$GITHUB_OUTPUT"
-        {
-          echo "update_lines<<ENDOFLINES"
-          echo "$update_lines"
-          echo "ENDOFLINES"
-        } >> "$GITHUB_OUTPUT"
 
     - name: Apply updates to package.json
       if: steps.check_updates.outputs.has_updates == 'true'
@@ -156,29 +155,26 @@ runs:
       id: collect_updates
       if: steps.check_updates.outputs.has_updates == 'true'
       shell: bash
-      env:
-        UPDATE_LINES: ${{ steps.check_updates.outputs.update_lines }}
       run: |
-        updates=""
+        updates_file="$RUNNER_TEMP/npm-updates.tsv"
+        node - "$RUNNER_TEMP/npm-package-before.json" package.json > "$updates_file" <<'NODE'
+        const fs = require("fs");
+        const before = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+        const after = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+        const sections = ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"];
+        const beforeVersions = Object.assign({}, ...sections.map(section => before[section] || {}));
+        const afterVersions = Object.assign({}, ...sections.map(section => after[section] || {}));
+        for (const name of Object.keys(afterVersions).sort()) {
+          if (beforeVersions[name] && beforeVersions[name] !== afterVersions[name]) {
+            console.log(`${name}\t${beforeVersions[name]}\t${afterVersions[name]}`);
+          }
+        }
+        NODE
 
-        while IFS= read -r line; do
-          [ -z "$line" ] && continue
-          pkg=$(echo "$line" | awk '{print $1}')
-          old_ver=$(echo "$line" | awk '{print $2}')
-          new_ver=$(echo "$line" | awk '{print $4}')
+        while IFS=$'\t' read -r pkg old_ver new_ver; do
           [ -z "$pkg" ] && continue
-          [ -z "$old_ver" ] && continue
-          [ -z "$new_ver" ] && continue
-
           echo "::notice::Updated $pkg from $old_ver to $new_ver"
-          updates+="${pkg}"$'\t'"${old_ver}"$'\t'"${new_ver}"$'\n'
-        done <<< "$UPDATE_LINES"
-
-        {
-          echo "updates<<ENDOFUPDATES"
-          printf "%s" "$updates"
-          echo "ENDOFUPDATES"
-        } >> "$GITHUB_OUTPUT"
+        done < "$updates_file"
 
     - name: Build PR description
       id: build_pr_body
@@ -186,11 +182,9 @@ runs:
       shell: bash
       env:
         HAS_UPDATES: ${{ steps.check_updates.outputs.has_updates }}
-        UPDATES: ${{ steps.collect_updates.outputs.updates }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
         updates_file="$RUNNER_TEMP/npm-updates.tsv"
-        printf "%s\n" "$UPDATES" > "$updates_file"
         empty_message=""
         if [ "$HAS_UPDATES" != "true" ]; then
           empty_message="Regenerated \`package-lock.json\` without package version changes."
