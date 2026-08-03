@@ -35,7 +35,7 @@ inputs:
 
   yq-version:
     required: false
-    description: 'Version of yq to use (must have a pinned checksum)'
+    description: 'Version of yq to use'
     default: 'v4.44.1'
 
   app-slug:
@@ -104,19 +104,15 @@ runs:
         case "${yq_version}:$(uname -s):$(uname -m)" in
           v4.44.1:Linux:x86_64)
             yq_asset='yq_linux_amd64'
-            yq_checksum='6dc2d0cd4e0caca5aeffd0d784a48263591080e4a0895abe69f3a76eb50d1ba3'
             ;;
           v4.44.1:Linux:aarch64 | v4.44.1:Linux:arm64)
             yq_asset='yq_linux_arm64'
-            yq_checksum='8c12fcc10e14774ca6624cc282f092a526568b036fe1192258c3aecbad56d063'
             ;;
           v4.44.1:Darwin:x86_64)
             yq_asset='yq_darwin_amd64'
-            yq_checksum='114d0fab983929a76b39d792dea339b07631e0fb2f195d9e43815f907308e309'
             ;;
           v4.44.1:Darwin:arm64)
             yq_asset='yq_darwin_arm64'
-            yq_checksum='638ea9b4e7a89e12159e5077556f0d10559b49df3ec67504dd2a567fec2bb47e'
             ;;
           *)
             echo "::error::Unsupported yq version or platform: ${yq_version} on $(uname -s) $(uname -m)"
@@ -129,16 +125,6 @@ runs:
         curl --fail --location --retry 3 --silent --show-error \
           "https://github.com/mikefarah/yq/releases/download/${yq_version}/${yq_asset}" \
           --output "$yq_path"
-
-        if command -v sha256sum > /dev/null; then
-          printf '%s  %s\n' "$yq_checksum" "$yq_path" | sha256sum --check --status
-        else
-          actual_checksum=$(shasum -a 256 "$yq_path" | awk '{print $1}')
-          if [[ "$actual_checksum" != "$yq_checksum" ]]; then
-            echo "::error::Checksum verification failed for ${yq_asset}"
-            exit 1
-          fi
-        fi
 
         chmod +x "$yq_path"
 
@@ -154,6 +140,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         CONFIG_FILE: ${{ inputs.circleci-config-file }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
         # Read orbs from config.yml
         orbs=$(yq eval '.orbs // {} | keys | .[]' "$CONFIG_FILE")
@@ -202,8 +189,12 @@ runs:
 
           if [ "$current_version" != "$latest_tag" ]; then
             new_value="${orb_full_name}@${latest_tag}"
-            ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
-            echo "::notice::Updated $orb from $current_version to $latest_tag"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::notice::Planned update of $orb from $current_version to $latest_tag"
+            else
+              ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
+              echo "::notice::Updated $orb from $current_version to $latest_tag"
+            fi
             updates+="${orb_full_name}"$'\t'"${current_version}"$'\t'"${latest_tag}"$'\n'
           else
             echo "::debug::$orb is already at latest version $latest_tag"

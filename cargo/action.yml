@@ -58,6 +58,11 @@ inputs:
     description: 'Whether to update Cargo dependencies'
     default: 'true'
 
+  keep-build-metadata:
+    required: false
+    description: "Preserve SemVer build metadata (the '+...' suffix) in upgraded version requirements"
+    default: 'false'
+
   dry-run:
     required: false
     description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
@@ -112,7 +117,7 @@ runs:
 
     - name: Setup Rust toolchain
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c
+      uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ steps.current_version.outputs.version }}
 
@@ -163,6 +168,7 @@ runs:
       shell: bash
       run: |
         python3 "${{ github.action_path }}/scripts/update_cargo_deps.py" \
+          ${{ inputs.keep-build-metadata == 'true' && '--keep-build-metadata' || '' }} \
           --manifests-file "${{ steps.discover.outputs.manifests_file }}"
 
     - name: Refresh Cargo.lock files

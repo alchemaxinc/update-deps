@@ -1,6 +1,6 @@
-name: 'Update Terraform Dependencies (Legacy)'
+name: 'Update Terraform Dependencies'
 
-description: 'DEPRECATED: combined Terraform update and PR action; use terraform/resolve and terraform/create-pr for credential isolation'
+description: 'Update Terraform dependencies'
 
 inputs:
   token:
@@ -30,7 +30,7 @@ inputs:
 
   backend-config:
     required: false
-    description: 'Legacy-only backend configuration passed to terraform init; terraform/resolve always disables the backend'
+    description: 'Backend configuration value to pass to `terraform init -backend-config=<backend-config>` if needed, otherwise ignore'
 
   var-file-path:
     required: false
@@ -62,17 +62,12 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree; use terraform/resolve instead'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
     default: 'false'
 
 runs:
   using: 'composite'
   steps:
-    - name: Warn about legacy credential boundary
-      shell: bash
-      run: |
-        echo "::warning::This legacy action resolves and validates Terraform before creating a PR in one job. It is not credential-isolated and can initialize a configured backend. Use terraform/resolve in an unprivileged job and terraform/create-pr in a separate privileged job."
-
     - name: Validate merge method
       uses: alchemaxinc/composite-toolbox/validate-merge-method@v1
       with:

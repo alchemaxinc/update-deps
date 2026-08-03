@@ -48,7 +48,7 @@ python cli.py \
 ```
 
 `crane` must be on `PATH`. The composite action installs it via
-`scripts/install_crane.sh` (pinned release, SHA256-verified). For local runs
+`scripts/install_crane.sh` (pinned release). For local runs
 install it yourself with:
 
 ```bash

@@ -6,33 +6,14 @@ A collection of convenient GitHub Actions for automatically updating your softwa
 
 ## Actions
 
-- :package: **[NPM Dependencies](./npm/README.md)** - Credential-isolated NPM dependency updates
-- :package: **[pnpm Dependencies](./pnpm/README.md)** - Credential-isolated pnpm dependency updates
+- :package: **[NPM Dependencies](./npm/README.md)** - Updates NPM package dependencies using npm-check-updates
+- :package: **[pnpm Dependencies](./pnpm/README.md)** - Updates pnpm package dependencies using pnpm update
 - :gear: **[Go Dependencies](./golang/README.md)** - Updates Go module dependencies
 - :arrows_counterclockwise: **[CircleCI Orbs](./circleci-orbs/README.md)** - Updates CircleCI orbs to their latest versions
-- :globe_with_meridians: **[Terraform Dependencies](./terraform/README.md)** - Credential-isolated Terraform provider updates
+- :globe_with_meridians: **[Terraform Dependencies](./terraform/README.md)** - Updates Terraform provider dependencies
 - :crab: **[Cargo Dependencies](./cargo/README.md)** - Updates Rust toolchain version and Cargo dependencies
 - :octocat: **[GitHub Actions](./actions/README.md)** - Updates GitHub Actions in workflow files to their latest versions
 - :whale: **[Docker Dependencies](./docker/README.md)** - Updates Docker image tags in Dockerfiles and docker-compose files
-
-## Credential-isolated update actions
-
-NPM, pnpm, and Terraform use the `split_actions` model:
-
-1. Run `resolve` from a read-only job (`contents: read`) after a checkout with
-   `persist-credentials: false`.
-2. Upload only its dependency patch as an artifact.
-3. In a separate job with `contents: write` and `pull-requests: write`, check
-   out the protected base branch, apply that patch, and run `create-pr`.
-
-The resolve actions have no token input and never perform checkout, push, or PR
-operations. NPM and pnpm lifecycle scripts are disabled; Terraform resolution
-and validation always use `terraform init -backend=false`. See the linked
-action READMEs for complete two-job workflows.
-
-The root `npm`, `pnpm`, and `terraform` actions are legacy combined actions.
-They remain for compatibility but are not credential-isolated and must not be
-used in new workflows.
 
 ## Runner platform and permissions
 
@@ -42,8 +23,7 @@ trusted checkout only.
 
 Actions that create branches and pull requests require a token with
 `contents: write` and `pull-requests: write` permissions. For
-`GITHUB_TOKEN`, declare those permissions only in the separate PR-creation
-job:
+`GITHUB_TOKEN`, declare the permissions in the calling workflow:
 
 ```yaml
 permissions:
@@ -51,9 +31,9 @@ permissions:
   pull-requests: write
 ```
 
-Never run dependency resolution with write credentials, secrets, or other
-privileged permissions on an untrusted checkout, including code from a forked
-pull request.
+Use a read-only token and `dry-run: 'true'` when testing. Never run these
+actions with write credentials, secrets, or other privileged permissions on an
+untrusted checkout, including code from a forked pull request.
 
 ## Local validation
 

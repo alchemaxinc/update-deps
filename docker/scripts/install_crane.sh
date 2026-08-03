@@ -4,8 +4,7 @@
 #
 # Usage: install_crane.sh <version>
 #
-# - Downloads the release tarball + checksums.txt from the GitHub release.
-# - Verifies the tarball against the canonical SHA256 in checksums.txt.
+# - Downloads the release tarball from the GitHub release.
 # - Extracts to "$RUNNER_TEMP/crane/bin" and appends that dir to $GITHUB_PATH.
 #
 set -euo pipefail
@@ -46,7 +45,7 @@ bin_dir="$work_dir/bin"
 mkdir -p "$bin_dir"
 
 # Fast path: if a previous step (e.g. actions/cache) already restored the
-# pinned crane binary, skip the download/verify and just expose it on PATH.
+# requested crane binary, skip the download and just expose it on PATH.
 if [[ -x "$bin_dir/crane" ]]; then
   installed_version="$("$bin_dir/crane" version 2>/dev/null || true)"
   if [[ "$installed_version" == *"${version#v}"* ]]; then
@@ -66,28 +65,6 @@ trap 'rm -rf "$tmp_dir"' EXIT
 echo "::notice::Downloading crane $version ($asset)"
 curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
   --connect-timeout 10 --max-time 60 -o "$tmp_dir/$asset" "$base_url/$asset"
-curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
-  --connect-timeout 10 --max-time 60 -o "$tmp_dir/checksums.txt" "$base_url/checksums.txt"
-
-# checksums.txt contains "<sha256>  <asset>" lines for every asset; pick the
-# one matching our tarball and verify it with the platform's SHA-256 tool.
-expected_line="$(grep " ${asset}\$" "$tmp_dir/checksums.txt" || true)"
-if [[ -z "$expected_line" ]]; then
-  echo "::error::No checksum entry for $asset in checksums.txt"
-  exit 1
-fi
-
-expected_checksum="${expected_line%% *}"
-if command -v sha256sum >/dev/null 2>&1; then
-  actual_checksum="$(sha256sum "$tmp_dir/$asset" | awk '{print $1}')"
-else
-  actual_checksum="$(shasum -a 256 "$tmp_dir/$asset" | awk '{print $1}')"
-fi
-if [[ "$actual_checksum" != "$expected_checksum" ]]; then
-  echo "::error::Checksum verification failed for $asset"
-  exit 1
-fi
-
 tar -xzf "$tmp_dir/$asset" -C "$bin_dir" crane
 chmod +x "$bin_dir/crane"
 

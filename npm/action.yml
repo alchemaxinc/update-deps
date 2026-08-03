@@ -1,6 +1,6 @@
-name: 'Update NPM Dependencies (Legacy)'
+name: 'Update NPM Dependencies'
 
-description: 'DEPRECATED: combined NPM update and PR action; use npm/resolve and npm/create-pr for credential isolation'
+description: 'Update NPM dependencies using npm-check-updates'
 
 inputs:
   token:
@@ -64,17 +64,12 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree; use npm/resolve instead'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
     default: 'false'
 
 runs:
   using: 'composite'
   steps:
-    - name: Warn about legacy credential boundary
-      shell: bash
-      run: |
-        echo "::warning::This legacy action resolves dependencies and creates a PR in one job. It is not credential-isolated. Use npm/resolve in an unprivileged job and npm/create-pr in a separate privileged job."
-
     - name: Validate merge method
       uses: alchemaxinc/composite-toolbox/validate-merge-method@v1
       with:
@@ -138,6 +133,7 @@ runs:
         fi
 
         if ! node -e 'const fs = require("fs"); process.exit(Object.keys(JSON.parse(fs.readFileSync(process.argv[1], "utf8"))).length ? 0 : 1)' "$updates_json"; then
+          printf '[]' > "$updates_json"
           echo "has_updates=false" >> "$GITHUB_OUTPUT"
           if [ "$RELOCK" = "true" ]; then
             echo "::notice::No package updates available; relocking package-lock.json"

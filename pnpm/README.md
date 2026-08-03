@@ -1,101 +1,64 @@
-# pnpm dependency update actions
+# Update pnpm Dependencies :package:
 
-Use the split actions to resolve dependency updates without write credentials,
-then create the pull request in a separate job. `pnpm/resolve` has no token
-input and does not check out code, push, or create pull requests. Every pnpm
-update and install command uses `--ignore-scripts`.
+This GitHub Action automatically updates pnpm dependencies using `pnpm update --latest` and creates a pull request with
+the changes.
 
-## Recommended credential-isolated workflow
+## :rocket: Usage
 
 ```yaml
 name: Update pnpm Dependencies
-
 on:
   schedule:
-    - cron: '0 2 * * 1'
-  workflow_dispatch:
+    - cron: '0 2 * * 1' # Run every Monday at 2 AM
+  workflow_dispatch: # Allow manual trigger
 
 jobs:
-  resolve:
+  update-dependencies:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      has_changes: ${{ steps.resolve.outputs.has_changes }}
-      patch_file: ${{ steps.resolve.outputs.patch_file }}
-      files: ${{ steps.resolve.outputs.files }}
-      pr_body: ${{ steps.resolve.outputs.pr_body }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - id: resolve
-        uses: alchemaxinc/update-deps/pnpm/resolve@v3
-      - if: steps.resolve.outputs.has_changes == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: pnpm-dependency-update
-          path: ${{ steps.resolve.outputs.patch_file }}
-          if-no-files-found: error
-
-  create-pr:
-    needs: resolve
-    if: needs.resolve.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: main
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: pnpm-dependency-update
-          path: ${{ runner.temp }}
-      - run: git apply --index "$RUNNER_TEMP/pnpm-dependency-update.patch"
-      - uses: alchemaxinc/update-deps/pnpm/create-pr@v3
+      - name: Update pnpm Dependencies
+        uses: alchemaxinc/update-deps/pnpm@v2.10.5
         with:
           token: ${{ github.token }}
-          base-branch: main
-          branch-prefix: update-pnpm-deps
+          base-branch: 'main'
+          branch-prefix: 'update-pnpm-deps'
           pr-title: 'Update pnpm Dependencies'
           commit-message: 'Update pnpm dependencies'
-          pr-body: ${{ needs.resolve.outputs.pr_body }}
-          files: ${{ needs.resolve.outputs.files }}
+          excluded-packages: 'package1,package2'
+          relock: false
 ```
 
-The artifact is a binary Git patch containing only `package.json`,
-`pnpm-lock.yaml`, and `pnpm-workspace.yaml` changes. The privileged job checks
-out the protected base branch, applies that patch, and does not execute
-package-management commands. Do not add untrusted files to this artifact or
-run untrusted code in the privileged job.
+## :gear: Inputs
 
-## Split action inputs
+| Input               | Description                                                                                | Required           | Default                    |
+| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | -------------------------- |
+| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                     |
+| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`      |
+| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`      |
+| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update pnpm Dependencies` |
+| `commit-message`    | Commit message for the update                                                              | :x:                | `Update pnpm dependencies` |
+| `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                          |
+| `relock`            | Whether `pnpm-lock.yaml` should be refreshed                                               | :x:                | `false`                    |
+| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                          |
+| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                    |
+| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                    |
+| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                    |
+| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                    |
 
-### `pnpm/resolve`
+## :warning: Prerequisites
 
-| Input               | Description                                                         | Default |
-| ------------------- | ------------------------------------------------------------------- | ------- |
-| `excluded-packages` | Comma-separated packages to exclude; pnpm glob patterns are allowed | -       |
-| `relock`            | Refresh `pnpm-lock.yaml` without version changes when true          | `false` |
+- Your repository must have a `package.json` file and a `pnpm-lock.yaml` lockfile
+- Node.js version should be specified in `.nvmrc` file
+- The pnpm version can be pinned via the `packageManager` field in `package.json` (read by `pnpm/action-setup`)
+- The action requires write permissions to create branches and pull requests
 
-It outputs `has_changes`, `patch_file`, newline-separated changed `files`, and
-a JSON-encoded `pr_body`.
+## :information_source: Behavior Notes
 
-### `pnpm/create-pr`
+Because updates are applied by pnpm itself rather than by an external tool, keep the following in mind:
 
-The PR action must run only after the patch is applied to a checkout of the
-base branch. Its required `token` needs `contents: write` and
-`pull-requests: write`. It accepts `base-branch`, `branch-prefix`, `pr-title`,
-`commit-message`, `pr-body`, `files`, `auto-merge`, `merge-method`, and
-`skip-if-pr-exists`.
-
-## Legacy combined action (deprecated)
-
-`alchemaxinc/update-deps/pnpm@v2` remains available for compatibility, but it
-resolves dependencies and creates a PR in the same job. It is **not**
-credential-isolated and its `token` defaults to `${{ github.token }}`. New
-workflows must use the split actions above. Existing inputs remain documented
-in [`action.yml`](./action.yml).
+- `catalog:` entries in `pnpm-workspace.yaml` are updated as well, and the file is included in the pull request when it
+  exists
+- On the first run, pnpm rewrites `package.json` with the dependency keys sorted alphabetically
+- A `"*"` range is replaced by a concrete caret range (for example `^1.3.0`)
+- `excluded-packages` entries are passed to pnpm as negation patterns (`!<package>`). Plain package names behave as
+  before; pnpm additionally supports glob patterns such as `@scope/*`

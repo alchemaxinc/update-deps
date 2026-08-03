@@ -1,6 +1,6 @@
-name: 'Update pnpm Dependencies (Legacy)'
+name: 'Update pnpm Dependencies'
 
-description: 'DEPRECATED: combined pnpm update and PR action; use pnpm/resolve and pnpm/create-pr for credential isolation'
+description: 'Update pnpm dependencies using pnpm update'
 
 inputs:
   token:
@@ -59,17 +59,12 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree; use pnpm/resolve instead'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
     default: 'false'
 
 runs:
   using: 'composite'
   steps:
-    - name: Warn about legacy credential boundary
-      shell: bash
-      run: |
-        echo "::warning::This legacy action resolves dependencies and creates a PR in one job. It is not credential-isolated. Use pnpm/resolve in an unprivileged job and pnpm/create-pr in a separate privileged job."
-
     - name: Validate merge method
       uses: alchemaxinc/composite-toolbox/validate-merge-method@v1
       with:
