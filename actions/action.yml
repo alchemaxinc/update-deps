@@ -31,7 +31,7 @@ inputs:
   file-glob:
     required: false
     description: 'Glob for workflow files (relative to repo root)'
-    default: '.github/**/*.yml'
+    default: '.github/**/*.y*ml'
 
   check-files:
     required: false
