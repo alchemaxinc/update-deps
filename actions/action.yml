@@ -99,7 +99,6 @@ runs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: pip
-        cache-dependency-path: ${{ github.action_path }}/requirements.txt
 
     - name: Install dependencies
       if: steps.check_existing_pr.outputs.exists != 'true'

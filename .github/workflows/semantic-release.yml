@@ -86,7 +86,7 @@ jobs:
         run: |
           git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "tag=$latest_tag" >> "$GITHUB_OUTPUT"
 
       - name: Is tag semantic?
         id: is-tag-semantic
@@ -95,7 +95,7 @@ jobs:
           TAG="${{ steps.latest-tag.outputs.tag }}"
 
           # Skip the tag if it does not match the semantic version pattern.
-          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::debug::Tag $TAG does not match the semantic version pattern. Skip moving tags."
             echo "semantic=false" >> $GITHUB_OUTPUT
             exit 0
@@ -109,13 +109,13 @@ jobs:
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         run: |
           TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          VERSION=${TAG#v}
+          VERSION="${TAG#v}"
           IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
           echo "::debug::Tag $TAG has MAJOR=$MAJOR and MINOR=$MINOR"
-          echo "major=$MAJOR" >> $GITHUB_OUTPUT
-          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 
       - name: Push major tag
         id: push-major
