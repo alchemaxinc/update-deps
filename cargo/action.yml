@@ -117,7 +117,7 @@ runs:
 
     - name: Setup Rust toolchain
       if: steps.check_existing_pr.outputs.exists != 'true'
-      uses: dtolnay/rust-toolchain@master
+      uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c
       with:
         toolchain: ${{ steps.current_version.outputs.version }}
 
