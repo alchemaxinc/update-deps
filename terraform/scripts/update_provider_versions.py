@@ -191,11 +191,11 @@ def main():
             # Pattern matches: source = "hashicorp/aws" followed by version = "..."
             # We need to find the provider block and update its version line within that block
             pattern = (
-                rf"(\b\w+\s*=\s*\{{\s*"  # provider_name = {
-                rf"[^}}]*source\s*=\s*[\"\']"
+                r"(\b\w+\s*=\s*\{\s*"  # provider_name = {
+                r"[^}]*source\s*=\s*[\"\']"
                 + re.escape(name)
                 + r"[\"\']"  # source = "registry/name"
-                rf"[^}}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
+                r"[^}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
             )
 
             old_constraint_match = re.search(

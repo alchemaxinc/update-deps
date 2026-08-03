@@ -18,6 +18,11 @@ env:
   PYTHON_VERSION: '3.14'
   CSPELL_VERSION: '8.0.0'
   BLACK_VERSION: '24.10.0'
+  RUFF_VERSION: '0.12.7'
+  ACTIONLINT_VERSION: '1.7.12'
+  ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+  SHELLCHECK_VERSION: '0.10.0'
+  SHELLCHECK_SHA256: '6c881ab0698e4e6ea235245f22832860544f17ba386442fe7e9d629f8cbedf87'
   PRETTIER_VERSION: '3.3.3'
   COMMITLINT_CLI_VERSION: '20.2.0'
 
@@ -108,6 +113,66 @@ jobs:
       - name: Run Black check
         run: black --check .
 
+  run-ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '${{ env.PYTHON_VERSION }}'
+
+      - name: Install Ruff
+        run: python -m pip install ruff==${{ env.RUFF_VERSION }}
+
+      - name: Run Ruff correctness checks
+        run: ruff check .
+
+  run-actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Install Actionlint
+        env:
+          VERSION: ${{ env.ACTIONLINT_VERSION }}
+          SHA256: ${{ env.ACTIONLINT_SHA256 }}
+        run: |
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          install_dir="$RUNNER_TEMP/actionlint"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz" \
+            --output "$archive"
+          echo "$SHA256  $archive" | sha256sum --check --status
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" actionlint
+
+      - name: Run Actionlint
+        run: '$RUNNER_TEMP/actionlint/actionlint -color'
+
+  run-shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Install ShellCheck
+        env:
+          VERSION: ${{ env.SHELLCHECK_VERSION }}
+          SHA256: ${{ env.SHELLCHECK_SHA256 }}
+        run: |
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          install_dir="$RUNNER_TEMP/shellcheck"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/koalaman/shellcheck/releases/download/v${VERSION}/shellcheck-v${VERSION}.linux.x86_64.tar.xz" \
+            --output "$archive"
+          echo "$SHA256  $archive" | sha256sum --check --status
+          mkdir -p "$install_dir"
+          tar -xJf "$archive" -C "$install_dir" --strip-components=1
+
+      - name: Run ShellCheck
+        run: git ls-files '*.sh' | xargs --no-run-if-empty "$RUNNER_TEMP/shellcheck/shellcheck"
+
   install-cspell:
     runs-on: ubuntu-latest
     steps:
@@ -187,6 +252,9 @@ jobs:
           dry-run: 'true'
           file-glob: 'actions/test/.github/**/*.yml'
 
+      - name: Verify dry run did not modify workflows
+        run: git diff --exit-code -- actions/test/.github
+
   test-circleci-orbs:
     name: Test CircleCI Orbs Updater
     runs-on: ubuntu-latest
@@ -202,6 +270,9 @@ jobs:
         with:
           dry-run: 'true'
           circleci-config-file: 'circleci-orbs/test/.circleci/config.yml'
+
+      - name: Verify dry run did not modify CircleCI configuration
+        run: git diff --exit-code -- circleci-orbs/test/.circleci/config.yml
 
   test-golang:
     name: Test Go Dependencies Updater
@@ -219,6 +290,14 @@ jobs:
         with:
           dry-run: 'true'
 
+      - name: Verify Go dry run updated the fixture
+        run: |
+          if cmp -s golang/test/go.mod go.mod; then
+            echo "::error::Go dependency dry run did not update go.mod"
+            exit 1
+          fi
+          go list -m golang.org/x/text
+
   test-npm:
     name: Test NPM Dependencies Updater
     runs-on: ubuntu-latest
@@ -234,7 +313,22 @@ jobs:
           cp npm/test/.nvmrc .
 
       - name: Test NPM dependencies updater
+        id: npm-resolve
         uses: ./npm/resolve
+
+      - name: Verify NPM resolution output
+        env:
+          FILES: ${{ steps.npm-resolve.outputs.files }}
+          HAS_CHANGES: ${{ steps.npm-resolve.outputs.has_changes }}
+          PATCH_FILE: ${{ steps.npm-resolve.outputs.patch_file }}
+          PR_BODY: ${{ steps.npm-resolve.outputs.pr_body }}
+        run: |
+          [ "$HAS_CHANGES" = 'true' ]
+          [ -s "$PATCH_FILE" ]
+          printf '%s\n' "$FILES" | grep -Fx 'package.json'
+          printf '%s\n' "$FILES" | grep -Fx 'package-lock.json'
+          node -e 'JSON.parse(process.env.PR_BODY)'
+          node -e 'if (require("./package.json").dependencies.lodash === "^4.17.0") process.exit(1)'
 
   test-pnpm:
     name: Test pnpm Dependencies Updater
@@ -251,7 +345,22 @@ jobs:
           cp pnpm/test/.nvmrc .
 
       - name: Test pnpm dependencies updater
+        id: pnpm-resolve
         uses: ./pnpm/resolve
+
+      - name: Verify pnpm resolution output
+        env:
+          FILES: ${{ steps.pnpm-resolve.outputs.files }}
+          HAS_CHANGES: ${{ steps.pnpm-resolve.outputs.has_changes }}
+          PATCH_FILE: ${{ steps.pnpm-resolve.outputs.patch_file }}
+          PR_BODY: ${{ steps.pnpm-resolve.outputs.pr_body }}
+        run: |
+          [ "$HAS_CHANGES" = 'true' ]
+          [ -s "$PATCH_FILE" ]
+          printf '%s\n' "$FILES" | grep -Fx 'package.json'
+          printf '%s\n' "$FILES" | grep -Fx 'pnpm-lock.yaml'
+          node -e 'JSON.parse(process.env.PR_BODY)'
+          node -e 'if (require("./package.json").dependencies.lodash === "^4.17.0") process.exit(1)'
 
   test-cargo:
     name: Test Cargo Dependencies Updater
@@ -269,6 +378,17 @@ jobs:
         with:
           dry-run: 'true'
 
+      - name: Verify Cargo dry run updated the fixture
+        run: |
+          if cmp -s cargo/test/rust-toolchain.toml rust-toolchain.toml; then
+            echo "::error::Cargo dependency dry run did not update rust-toolchain.toml"
+            exit 1
+          fi
+          if cmp -s cargo/test/wrapper/Cargo.toml wrapper/Cargo.toml; then
+            echo "::error::Cargo dependency dry run did not update wrapper/Cargo.toml"
+            exit 1
+          fi
+
   test-terraform:
     name: Test Terraform Dependencies Updater
     runs-on: ubuntu-latest
@@ -278,9 +398,23 @@ jobs:
       - *checkout-code
 
       - name: Test Terraform dependencies updater
+        id: terraform-resolve
         uses: ./terraform/resolve
         with:
           working-dir: 'terraform/test'
+
+      - name: Verify Terraform resolution output
+        env:
+          FILES: ${{ steps.terraform-resolve.outputs.files }}
+          HAS_CHANGES: ${{ steps.terraform-resolve.outputs.has_changes }}
+          PATCH_FILE: ${{ steps.terraform-resolve.outputs.patch_file }}
+          PR_BODY: ${{ steps.terraform-resolve.outputs.pr_body }}
+        run: |
+          [ "$HAS_CHANGES" = 'true' ]
+          [ -s "$PATCH_FILE" ]
+          printf '%s\n' "$FILES" | grep -Fx 'terraform/test/main.tf'
+          printf '%s\n' "$FILES" | grep -Fx 'terraform/test/.terraform.lock.hcl'
+          node -e 'JSON.parse(process.env.PR_BODY)'
 
   test-docker:
     name: Test Docker Images Updater
@@ -298,6 +432,11 @@ jobs:
         with:
           dry-run: 'true'
 
+      - name: Verify dry run did not modify Docker fixtures
+        run: |
+          cmp docker/test/Dockerfile Dockerfile
+          cmp docker/test/docker-compose.yml docker-compose.yml
+
   ci-passed:
     name: CI Passed
     runs-on: ubuntu-latest
@@ -306,6 +445,9 @@ jobs:
       - run-commitlint
       - run-prettier
       - run-black
+      - run-ruff
+      - run-actionlint
+      - run-shellcheck
       - run-cspell
       - python-unit-tests
       - test-actions
@@ -323,6 +465,9 @@ jobs:
             "${{ needs.run-commitlint.result }}"
             "${{ needs.run-prettier.result }}"
             "${{ needs.run-black.result }}"
+            "${{ needs.run-ruff.result }}"
+            "${{ needs.run-actionlint.result }}"
+            "${{ needs.run-shellcheck.result }}"
             "${{ needs.run-cspell.result }}"
             "${{ needs.python-unit-tests.result }}"
             "${{ needs.test-actions.result }}"
