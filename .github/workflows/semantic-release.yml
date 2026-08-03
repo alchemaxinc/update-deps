@@ -22,25 +22,32 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        uses: actions/setup-node@v7
         with:
           node-version: '24.10.0'
-          cache: npm
+
+      - name: Cache locked release tooling
+        id: cache-semantic-release
+        uses: actions/cache@v6
+        with:
+          path: node_modules
+          key: semantic-release-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install locked release tooling
+        if: steps.cache-semantic-release.outputs.cache-hit != 'true'
         run: npm ci --ignore-scripts
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: npx --no-install semantic-release
+        run: ./node_modules/.bin/semantic-release
 
   semantic-release-flowing-tags:
     name: Add flowing tags
@@ -53,11 +60,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
-          persist-credentials: false
 
       - name: Get latest tag
         id: latest-tag
