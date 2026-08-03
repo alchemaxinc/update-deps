@@ -10,12 +10,8 @@ import scripts.update_provider_versions as module
 
 class TestUpdateProviderVersions(unittest.TestCase):
     def test_preserves_constraint_operators_and_bounds(self):
-        self.assertEqual(
-            module.update_constraint("~> 5.0", "5.2.1"), "~> 5.2"
-        )
-        self.assertEqual(
-            module.update_constraint("= 5.0.0", "5.2.1"), "= 5.2.1"
-        )
+        self.assertEqual(module.update_constraint("~> 5.0", "5.2.1"), "~> 5.2")
+        self.assertEqual(module.update_constraint("= 5.0.0", "5.2.1"), "= 5.2.1")
         self.assertIsNone(module.update_constraint(">= 5.0, < 6.0", "5.2.1"))
         self.assertIsNone(module.update_constraint("~> 5.0.0", "5.2.1"))
 
@@ -207,7 +203,9 @@ class TestUpdateProviderVersions(unittest.TestCase):
                 ):
                     module.main()
 
-            self.assertIn('version = "~> 5.0"', generated_tf.read_text(encoding="utf-8"))
+            self.assertIn(
+                'version = "~> 5.0"', generated_tf.read_text(encoding="utf-8")
+            )
 
 
 if __name__ == "__main__":

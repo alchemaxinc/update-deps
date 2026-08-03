@@ -104,9 +104,7 @@ def process_manifest(manifest_path, keep_build_metadata=False):
             check=True,
         )
     except subprocess.CalledProcessError as error:
-        print(
-            f"::warning::Failed to upgrade dependencies in {manifest_path}: {error}"
-        )
+        print(f"::warning::Failed to upgrade dependencies in {manifest_path}: {error}")
         return []
 
     after = get_direct_dependencies(str(manifest))

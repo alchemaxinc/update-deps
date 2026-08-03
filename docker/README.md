@@ -77,24 +77,24 @@ Version 1 skips references with `@sha256:` digest pins. It also skips
 
 ## :gear: Inputs
 
-| Input | Description | Required | Default |
-| --- | --- | --- | --- |
-| `base-branch` | Base branch for the pull request | :white_check_mark: | `main` |
-| `token` | GitHub token for authentication | :x: | `${{ github.token }}` |
-| `branch-prefix` | Prefix for the update branch | :x: | `update-docker-images` |
-| `pr-title` | Title of the pull request | :x: | `Update Docker Images` |
-| `commit-message` | Commit message for the update | :x: | `Update Docker images` |
-| `dockerfile-glob` | Glob for Dockerfiles, relative to the repository root | :x: | `**/Dockerfile*` |
-| `compose-glob` | Glob for docker-compose files | :x: | `**/docker-compose*.y*ml` |
-| `markdown-glob` | Glob for Markdown files. An empty value disables Markdown updates. | :x: | - |
-| `excluded-images` | Comma-separated registry, repository, or tag values to exclude | :x: | - |
-| `crane-version` | Pinned `google/go-containerregistry` release for crane | :x: | `v0.21.5` |
-| `check-files` | Path or glob for changed files in the pull request | :x: | `.` |
-| `app-slug` | GitHub App slug for commit attribution | :x: | - |
-| `auto-merge` | Enable automatic pull request merge | :x: | `false` |
-| `merge-method` | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
-| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
-| `dry-run` | Run without creating a pull request | :x: | `false` |
+| Input               | Description                                                        | Required           | Default                   |
+| ------------------- | ------------------------------------------------------------------ | ------------------ | ------------------------- |
+| `base-branch`       | Base branch for the pull request                                   | :white_check_mark: | `main`                    |
+| `token`             | GitHub token for authentication                                    | :x:                | `${{ github.token }}`     |
+| `branch-prefix`     | Prefix for the update branch                                       | :x:                | `update-docker-images`    |
+| `pr-title`          | Title of the pull request                                          | :x:                | `Update Docker Images`    |
+| `commit-message`    | Commit message for the update                                      | :x:                | `Update Docker images`    |
+| `dockerfile-glob`   | Glob for Dockerfiles, relative to the repository root              | :x:                | `**/Dockerfile*`          |
+| `compose-glob`      | Glob for docker-compose files                                      | :x:                | `**/docker-compose*.y*ml` |
+| `markdown-glob`     | Glob for Markdown files. An empty value disables Markdown updates. | :x:                | -                         |
+| `excluded-images`   | Comma-separated registry, repository, or tag values to exclude     | :x:                | -                         |
+| `crane-version`     | Pinned `google/go-containerregistry` release for crane             | :x:                | `v0.21.5`                 |
+| `check-files`       | Path or glob for changed files in the pull request                 | :x:                | `.`                       |
+| `app-slug`          | GitHub App slug for commit attribution                             | :x:                | -                         |
+| `auto-merge`        | Enable automatic pull request merge                                | :x:                | `false`                   |
+| `merge-method`      | Merge method: `merge`, `squash`, or `rebase`                       | :x:                | `merge`                   |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists        | :x:                | `false`                   |
+| `dry-run`           | Run without creating a pull request                                | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 

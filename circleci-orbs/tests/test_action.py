@@ -25,7 +25,7 @@ class TestCircleCIOrbAction(unittest.TestCase):
         )
 
     def test_dry_run_does_not_edit_configuration(self):
-        self.assertIn('DRY_RUN: ${{ inputs.dry-run }}', self.action)
+        self.assertIn("DRY_RUN: ${{ inputs.dry-run }}", self.action)
         self.assertIn('if [ "$DRY_RUN" = "true" ]; then', self.action)
 
     def test_latest_versions_come_from_the_circleci_orb_registry(self):

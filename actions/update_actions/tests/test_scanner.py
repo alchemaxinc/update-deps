@@ -107,9 +107,7 @@ class TestScanner(unittest.TestCase):
           echo "uses: actions/checkout@v3"
       - uses: actions/checkout@v3
 """
-        updated = scanner.apply_updates(
-            text, {("actions/checkout", "v3"): "v4"}
-        )
+        updated = scanner.apply_updates(text, {("actions/checkout", "v3"): "v4"})
         self.assertIn('echo "uses: actions/checkout@v3"', updated)
         self.assertIn("- uses: actions/checkout@v4", updated)
 

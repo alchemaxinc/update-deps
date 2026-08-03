@@ -154,9 +154,7 @@ def main():
         # Terraform writes downloaded providers and copied modules below
         # .terraform. These files are generated, not user configuration.
         dirs[:] = [
-            directory
-            for directory in dirs
-            if directory not in EXCLUDED_DIRECTORIES
+            directory for directory in dirs if directory not in EXCLUDED_DIRECTORIES
         ]
         for file in files:
             if file.endswith(".tf"):
@@ -173,7 +171,9 @@ def main():
 
         # Skip files without a required_providers block.
         if "required_providers" not in content:
-            logging.debug("The action skips %s. No required_providers block exists.", tf_file)
+            logging.debug(
+                "The action skips %s. No required_providers block exists.", tf_file
+            )
             continue
 
         original_content = content

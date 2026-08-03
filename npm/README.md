@@ -30,20 +30,20 @@ jobs:
 
 ## :gear: Inputs
 
-| Input | Description | Required | Default |
-| --- | --- | --- | --- |
-| `base-branch` | Base branch for the pull request | :white_check_mark: | `main` |
-| `token` | GitHub token for authentication | :x: | `${{ github.token }}` |
-| `branch-prefix` | Prefix for the update branch | :x: | `update-dependencies` |
-| `pr-title` | Title of the pull request | :x: | `Update NPM Dependencies` |
-| `commit-message` | Commit message for the update | :x: | `Update NPM dependencies` |
-| `excluded-packages` | Comma-separated packages to exclude | :x: | - |
-| `relock` | Regenerate `package-lock.json` | :x: | `false` |
-| `app-slug` | GitHub App slug for commit attribution | :x: | - |
-| `auto-merge` | Enable automatic pull request merge | :x: | `false` |
-| `merge-method` | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
-| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
-| `dry-run` | Run without creating a pull request | :x: | `false` |
+| Input               | Description                                                 | Required           | Default                   |
+| ------------------- | ----------------------------------------------------------- | ------------------ | ------------------------- |
+| `base-branch`       | Base branch for the pull request                            | :white_check_mark: | `main`                    |
+| `token`             | GitHub token for authentication                             | :x:                | `${{ github.token }}`     |
+| `branch-prefix`     | Prefix for the update branch                                | :x:                | `update-dependencies`     |
+| `pr-title`          | Title of the pull request                                   | :x:                | `Update NPM Dependencies` |
+| `commit-message`    | Commit message for the update                               | :x:                | `Update NPM dependencies` |
+| `excluded-packages` | Comma-separated packages to exclude                         | :x:                | -                         |
+| `relock`            | Regenerate `package-lock.json`                              | :x:                | `false`                   |
+| `app-slug`          | GitHub App slug for commit attribution                      | :x:                | -                         |
+| `auto-merge`        | Enable automatic pull request merge                         | :x:                | `false`                   |
+| `merge-method`      | Merge method: `merge`, `squash`, or `rebase`                | :x:                | `merge`                   |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x:                | `false`                   |
+| `dry-run`           | Run without creating a pull request                         | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 

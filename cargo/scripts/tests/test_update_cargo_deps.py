@@ -94,9 +94,7 @@ class TestProcessManifest(unittest.TestCase):
         self.assertEqual(updates, [])
 
     def test_skips_manifest_when_cargo_upgrade_fails(self):
-        with mock.patch.object(
-            module, "get_direct_dependencies", return_value={}
-        ):
+        with mock.patch.object(module, "get_direct_dependencies", return_value={}):
             with mock.patch.object(
                 module.subprocess,
                 "run",
