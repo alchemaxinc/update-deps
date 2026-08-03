@@ -59,7 +59,7 @@ inputs:
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
     default: 'false'
 
 runs:
