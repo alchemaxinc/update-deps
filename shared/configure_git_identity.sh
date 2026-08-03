@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Configure the local Git author from the token used to create the pull request.
+# Set the local Git author from the token that creates the pull request.
 
 set -euo pipefail
 

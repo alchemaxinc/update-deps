@@ -1,6 +1,6 @@
 name: 'Update CircleCI Orbs'
 
-description: 'Update CircleCI orbs to their latest versions'
+description: 'Update CircleCI orbs to the latest versions.'
 
 inputs:
   token:
@@ -10,7 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -19,47 +19,47 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update CircleCI Orbs'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update CircleCI orbs'
 
   circleci-config-file:
     required: false
-    description: 'Path to the CircleCI config file'
+    description: 'Path to the CircleCI configuration file'
     default: '.circleci/config.yml'
 
   yq-version:
     required: false
-    description: 'Version of yq to use'
+    description: 'Version of yq'
     default: 'v4.44.1'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
+    description: 'Test mode updates a pre-checked-out working tree. It does not check out or create a pull request.'
     default: 'false'
 
 runs:
@@ -141,26 +141,26 @@ runs:
         CONFIG_FILE: ${{ inputs.circleci-config-file }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        # Read orbs from config.yml
+        # Read orbs from the configuration file.
         orbs=$(yq eval '.orbs // {} | keys | .[]' "$CONFIG_FILE")
         updates=""
 
         for orb in $orbs; do
-          echo "::debug::Processing orb: $orb"
+          echo "::debug::The action processes orb: $orb"
 
-          # Capture the old orb value (namespace@version)
+          # Read the current orb value (namespace@version).
           old_value=$(ORB="$orb" yq eval '.orbs[env(ORB)]' "$CONFIG_FILE")
           if [[ "$old_value" != *@* ]]; then
-            echo "::warning::Skipping $orb because '$old_value' is not a versioned orb reference"
+            echo "::warning::The action skips $orb. '$old_value' is not a versioned orb reference."
             continue
           fi
 
-          # Get the orb namespace and name (e.g., "circleci" and "aws-cli").
+          # Get the orb namespace and name, for example "circleci" and "aws-cli".
           orb_full_name=$(echo "$old_value" | cut -d'@' -f1)
           orb_namespace="${orb_full_name%%/*}"
           orb_name="${orb_full_name#*/}"
 
-          # Get the current version
+          # Get the current version.
           current_version=$(echo "$old_value" | cut -d'@' -f2)
 
           # Get the latest published version from the CircleCI orb registry.
@@ -189,14 +189,14 @@ runs:
           if [ "$current_version" != "$latest_tag" ]; then
             new_value="${orb_full_name}@${latest_tag}"
             if [ "$DRY_RUN" = "true" ]; then
-              echo "::notice::Planned update of $orb from $current_version to $latest_tag"
+              echo "::notice::Planned update: $orb from $current_version to $latest_tag"
             else
               ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
               echo "::notice::Updated $orb from $current_version to $latest_tag"
             fi
             updates+="${orb_full_name}"$'\t'"${current_version}"$'\t'"${latest_tag}"$'\n'
           else
-            echo "::debug::$orb is already at latest version $latest_tag"
+            echo "::debug::$orb already uses latest version $latest_tag"
           fi
         done
 

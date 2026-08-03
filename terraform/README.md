@@ -1,15 +1,16 @@
 # Update Terraform Dependencies :package:
 
-This GitHub Action automatically updates Terraform provider dependencies and creates a pull request with the changes.
+This GitHub Action updates Terraform provider dependencies. It creates a pull
+request with the changes.
 
 > [!IMPORTANT]
-> This action intelligently detects provider updates by:
+> This action finds provider updates:
 >
-> 1. Capturing current provider versions
-> 2. Fetching the latest versions from the Terraform Registry
-> 3. Updating provider version constraints in `.tf` files
-> 4. Running `terraform init -upgrade` to update the `.terraform.lock.hcl`
-> 5. Creating a pull request when files in the Terraform working directory changed
+> 1. It gets current provider versions.
+> 2. It gets the latest versions from the Terraform Registry.
+> 3. It updates provider version constraints in `.tf` files.
+> 4. It runs `terraform init -upgrade` to update `.terraform.lock.hcl`.
+> 5. It creates a pull request when files change in the Terraform working directory.
 
 ## :rocket: Usage
 
@@ -35,48 +36,48 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                         |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                          |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`           |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`           |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Terraform Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Terraform dependencies` |
-| `working-dir`       | Working directory for Terraform                                                            | :white_check_mark: | -                               |
-| `var-file-path`     | Deprecated compatibility input; Terraform `init` and `validate` do not use variable files  | :x:                | -                               |
-| `backend-config`    | Backend configuration value for `terraform init -backend-config=`                          | :x:                | -                               |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                               |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                         |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                         |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                         |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                         |
+| Input | Description | Required | Default |
+| --- | --- | --- | --- |
+| `base-branch` | Base branch for the pull request | :white_check_mark: | `main` |
+| `token` | GitHub token for authentication | :x: | `${{ github.token }}` |
+| `branch-prefix` | Prefix for the update branch | :x: | `update-dependencies` |
+| `pr-title` | Title of the pull request | :x: | `Update Terraform Dependencies` |
+| `commit-message` | Commit message for the update | :x: | `Update Terraform dependencies` |
+| `working-dir` | Working directory for Terraform | :white_check_mark: | - |
+| `var-file-path` | Deprecated input. Terraform `init` and `validate` do not use variable files. | :x: | - |
+| `backend-config` | Backend configuration value for `terraform init -backend-config=` | :x: | - |
+| `app-slug` | GitHub App slug for commit attribution | :x: | - |
+| `auto-merge` | Enable automatic pull request merge | :x: | `false` |
+| `merge-method` | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
+| `dry-run` | Run without creating a pull request | :x: | `false` |
 
 ## :gear: How It Works
 
-This action performs the following steps:
+The action does these steps:
 
-1. **Checkout and Setup** - Checks out the repository and sets up Terraform
-2. **Baseline Initialization** - Runs `terraform init` with optional backend configuration to establish baseline
-3. **Capture Current Versions** - Runs `terraform version -json` to get current provider versions
-4. **Fetch Latest Versions** - Queries the Terraform Registry API for each provider to find the latest available versions
-5. **Update Provider Constraints** - Updates all `.tf` files with new provider version constraints in the `required_providers` block
-6. **Run Terraform Init with Upgrade** - Executes `terraform init -upgrade` to update the `.terraform.lock.hcl` file
-7. **Terraform Validate** - Validates the Terraform configuration to ensure it's still valid
-8. **Terraform Format** - Formats all `.tf` files using `terraform fmt`
-9. **Check for Changes** - Detects changes in the configured Terraform working directory
-10. **Create Pull Request** - Only creates a PR if files changed
+1. **Checkout and setup:** Checks out the repository and sets up Terraform.
+2. **Baseline initialization:** Runs `terraform init` with an optional backend configuration.
+3. **Get current versions:** Runs `terraform version -json`.
+4. **Get latest versions:** Queries the Terraform Registry API for each provider.
+5. **Update provider constraints:** Updates `.tf` files in the `required_providers` block.
+6. **Run Terraform init with upgrade:** Runs `terraform init -upgrade` to update `.terraform.lock.hcl`.
+7. **Validate Terraform:** Validates the Terraform configuration.
+8. **Format Terraform:** Formats `.tf` files with `terraform fmt`.
+9. **Find changes:** Detects changes in the configured Terraform working directory.
+10. **Create pull request:** Creates a pull request only when files change.
 
 ## :warning: Prerequisites
 
-- Your repository must have Terraform configuration files (`.tf` files)
-- A `.terraform.lock.hcl` file must be present or will be created
-- Provider requirements must be defined in a `required_providers` block in your `.tf` files
-- The action requires write permissions to create branches and pull requests
+- Add Terraform configuration files (`.tf` files) to the repository.
+- Add `.terraform.lock.hcl`, or let the action create it.
+- Define provider requirements in a `required_providers` block in `.tf` files.
+- Give the action write permissions to create branches and pull requests.
 
 ## :bulb: Tips
 
-- The `backend-config` is optional and useful for remote state backends that require additional configuration
-- The action only creates a PR if it detects actual version changes, preventing unnecessary PRs
-- Use `working-dir` to specify the subdirectory containing your Terraform configuration
-- The action uses conservative version constraints (`~> X.Y`) when updating providers
-- The action automatically validates and formats your Terraform code before creating the PR
+- Use `backend-config` for remote state backends that need more configuration.
+- The action creates a pull request only when it finds version changes.
+- Use `working-dir` to specify the subdirectory with Terraform configuration.
+- The action uses conservative provider version constraints (`~> X.Y`).
+- The action validates and formats Terraform files before it creates the pull request.

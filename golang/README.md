@@ -1,9 +1,11 @@
 # Update Go Dependencies :package:
 
-This GitHub Action automatically updates Go module dependencies and creates a pull request with the changes.
+This GitHub Action updates Go module dependencies. It creates a pull request
+with the changes.
 
 > [!IMPORTANT]  
-> This action updates dependencies using `go get -u` (by default) and thus does not update to new major versions. You can customize this behavior using the `strategy` input parameter.
+> By default, this action uses `go get -u`. It does not update to new major
+> versions. Use the `strategy` input to change this behavior.
 
 ## :rocket: Usage
 
@@ -29,33 +31,35 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                      |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ---------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                       |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`        |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`        |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Golang Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Golang dependencies` |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                            |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                      |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                      |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                      |
-| `strategy`          | Dependency update strategy                                                                 | :x:                | `controlled`                 |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                      |
+| Input | Description | Required | Default |
+| --- | --- | --- | --- |
+| `base-branch` | Base branch for the pull request | :white_check_mark: | `main` |
+| `token` | GitHub token for authentication | :x: | `${{ github.token }}` |
+| `branch-prefix` | Prefix for the update branch | :x: | `update-dependencies` |
+| `pr-title` | Title of the pull request | :x: | `Update Golang Dependencies` |
+| `commit-message` | Commit message for the update | :x: | `Update Golang dependencies` |
+| `app-slug` | GitHub App slug for commit attribution | :x: | - |
+| `auto-merge` | Enable automatic pull request merge | :x: | `false` |
+| `merge-method` | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
+| `strategy` | Dependency update strategy | :x: | `controlled` |
+| `dry-run` | Run without creating a pull request | :x: | `false` |
 
 ## 📋 Update Strategies
 
-The `strategy` parameter controls how dependencies are updated:
+The `strategy` input controls dependency updates:
 
 ### `controlled` (default)
 
-Updates direct dependencies and their transitive dependencies while respecting version constraints. Uses `go get -t -u ./...` for a safe, tested update approach.
+Updates direct and transitive dependencies within version constraints. It uses
+`go get -t -u ./...`.
 
-**Best for:** Most use cases where stability and compatibility are important.
+**Use this strategy for:** Updates that need stability and compatibility.
 
 ### `direct`
 
-Updates only direct dependencies (those explicitly listed in `go.mod`) to their latest versions, ignoring indirect dependencies.
+Updates only direct dependencies listed in `go.mod`. It ignores indirect
+dependencies.
 
 ```bash
 while IFS= read -r module; do
@@ -64,11 +68,12 @@ while IFS= read -r module; do
 done < <(go list -m -f '{{if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' all)
 ```
 
-**Best for:** When you want to update only the dependencies you directly control.
+**Use this strategy for:** Updates to only direct dependencies.
 
 ### `everything`
 
-Updates all dependencies, including indirect ones, to their latest available versions. This is the most aggressive strategy and may introduce breaking changes.
+Updates direct and indirect dependencies to their latest versions. This is the
+most aggressive strategy. It can introduce breaking changes.
 
 ```bash
 while IFS= read -r module; do
@@ -78,10 +83,11 @@ done < <(go list -m -u all \
   | awk '$NF ~ /^\[v/ { print $1 "@" substr($NF, 2, length($NF) - 2) }')
 ```
 
-**Best for:** When you want the absolute latest versions and are willing to handle breaking changes.
+**Use this strategy for:** Updates that need the latest versions and can accept
+breaking changes.
 
 ## :warning: Prerequisites
 
-- Your repository must have a `go.mod` file
-- Go version should be specified in the `go.mod` file
-- The action requires write permissions to create branches and pull requests
+- Add a `go.mod` file to the repository.
+- Specify the Go version in `go.mod`.
+- Give the action write permissions to create branches and pull requests.

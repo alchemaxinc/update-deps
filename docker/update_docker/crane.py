@@ -6,12 +6,11 @@ import time
 
 
 def crane_list(repo: str) -> list[str]:
-    """Return all tags for a fully-qualified repo via ``crane ls``.
+    """Return tags for a complete repository name with ``crane ls``.
 
-    On non-zero exit (network error, rate limit, missing repo) we log a
-    GitHub-Actions warning annotation and return an empty list, matching the
-    pattern used by ``actions/update_actions/github_api.py::fetch_release_tags``.
-    Crane must be on ``PATH``; the composite action installs it via
+    On a nonzero exit, log a GitHub Actions warning and return an empty list.
+    This matches ``actions/update_actions/github_api.py::fetch_release_tags``.
+    Crane must be on ``PATH``. The composite action installs it with
     ``scripts/install_crane.sh``.
     """
     cmd = ["crane", "ls", repo]
@@ -22,7 +21,7 @@ def crane_list(repo: str) -> list[str]:
             )
         except FileNotFoundError:
             print(
-                "::warning::crane binary not found on PATH; skipping tag lookup",
+                "::warning::crane binary is not on PATH. Skip tag lookup.",
                 file=sys.stderr,
             )
             return []

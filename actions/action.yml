@@ -1,6 +1,6 @@
 name: 'Update GitHub Actions'
 
-description: 'Update GitHub Actions used in .github workflow files'
+description: 'Update GitHub Actions in .github workflow files.'
 
 inputs:
   token:
@@ -10,7 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -19,52 +19,52 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update GitHub Actions'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update GitHub Actions'
 
   file-glob:
     required: false
-    description: 'Glob for workflow files (relative to repo root)'
+    description: 'Glob for workflow files, relative to the repository root'
     default: '.github/**/*.y*ml'
 
   check-files:
     required: false
-    description: 'Path/glob used to detect and include changed files in the PR'
+    description: 'Path or glob for changed files in the pull request'
     default: '.github'
 
   excluded-actions:
     required: false
-    description: 'Comma-separated list of action owners, repositories, or paths to exclude. Values are literal, not regex.'
+    description: 'Comma-separated action owners, repositories, or paths to exclude. Values are literal, not regular expressions.'
     default: ''
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Print planned updates without modifying files or creating a PR'
+    description: 'Print planned updates. Do not modify files or create a pull request.'
     default: 'false'
 
 runs:

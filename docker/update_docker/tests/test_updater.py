@@ -5,8 +5,8 @@ from pathlib import Path
 
 from update_docker.updater import update_docker
 
-# Stand-in tag listings keyed by crane repo (registry/repo, with implicit
-# docker.io stripped) so tests don't shell out.
+# Use stand-in tag lists by crane repository. Remove the implicit docker.io
+# prefix so tests do not call the shell.
 FAKE_TAGS = {
     "library/rust": ["1.94-alpine", "1.95-alpine", "1.95-slim-bookworm", "latest"],
     "getmeili/meilisearch": ["v1.42.1", "v1.43.0", "v2.0.0"],
@@ -25,7 +25,7 @@ class TestUpdater(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
-        # Mirror the guinea-pig repo layout.
+        # Create the test repository layout.
         (self.root / "Dockerfile").write_text(
             "FROM rust:1.94-alpine AS builder\n"
             "FROM getmeili/meilisearch:v1.42.1\n"
@@ -55,16 +55,16 @@ class TestUpdater(unittest.TestCase):
         dockerfile = (self.root / "Dockerfile").read_text(encoding="utf-8")
         compose = (self.root / "docker-compose.yml").read_text(encoding="utf-8")
 
-        # Variant suffix preserved.
+        # Keep the variant suffix.
         self.assertIn("rust:1.95-alpine", dockerfile)
         self.assertNotIn("rust:1.95-slim-bookworm", dockerfile)
-        # Patch-level granularity preserved (we don't bump v1.42.1 → v2.0.0,
-        # we bump to v2.0.0 verbatim because granularize keeps three parts).
+        # Keep patch-level granularity. granularize keeps three parts, so the
+        # action updates v1.42.1 to v2.0.0.
         self.assertIn("getmeili/meilisearch:v2.0.0", dockerfile)
         self.assertIn("public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0", dockerfile)
-        # Stage alias not rewritten.
+        # Do not rewrite the stage alias.
         self.assertIn("AS builder", dockerfile)
-        # Compose updated.
+        # Update the compose file.
         self.assertIn("redis:7.4", compose)
 
     def test_dry_run_does_not_write(self):
@@ -84,8 +84,8 @@ class TestUpdater(unittest.TestCase):
     def test_diff_minimality(self):
         self._run()
         dockerfile = (self.root / "Dockerfile").read_text(encoding="utf-8")
-        # Stage alias, --platform-less FROM lines, and the trailing newline
-        # all survive a single-line tag swap.
+        # Keep the stage alias, --platform-less FROM lines, and trailing newline
+        # after a one-line tag replacement.
         self.assertEqual(dockerfile.count("\n"), 3)
         self.assertTrue(dockerfile.endswith("\n"))
 

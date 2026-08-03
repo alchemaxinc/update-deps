@@ -59,7 +59,7 @@ def update_actions(
     for action_ref, release_repo, current_tag in filtered_uses:
         current_version = parse_version(current_tag)
         if current_version is None:
-            print(f"Skipping {action_ref}@{current_tag} (unsupported tag format)")
+            print(f"Skip {action_ref}@{current_tag}. The tag format is not supported.")
             continue
 
         if release_repo not in release_tags_cache:
@@ -68,7 +68,7 @@ def update_actions(
 
         latest_tag = select_latest_tag(tags)
         if latest_tag is None:
-            print(f"Skipping {action_ref}@{current_tag} (no valid release tags found)")
+            print(f"Skip {action_ref}@{current_tag}. No valid release tags exist.")
             continue
 
         latest_version = parse_version(latest_tag)

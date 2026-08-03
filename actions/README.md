@@ -1,7 +1,8 @@
 # Update GitHub Actions :arrows_counterclockwise:
 
-This GitHub Action scans `.github` workflows, finds external `uses:` entries, compares them to the latest GitHub
-releases, and updates them when newer versions exist.
+This GitHub Action scans `.github` workflow files for external `uses:` entries.
+It compares each entry with the latest GitHub release. It updates entries that
+have newer versions.
 
 ## :rocket: Usage
 
@@ -34,30 +35,32 @@ jobs:
 python cli.py --root /path/to/repo --file-glob '.github/**/*.yml' --excluded-actions 'docker,owner/legacy-action'
 ```
 
-By default, the action updates all external GitHub Actions with semver-like tags. Use `excluded-actions` to skip specific
-actions. Exclusions are comma-separated literal values, not regex or glob patterns. Each value can be an owner
-(`actions`), repository (`actions/checkout`), or action path (`owner/repo/path/to/action`).
+By default, the action updates external GitHub Actions with semver-like tags.
+Use `excluded-actions` to skip an action. Exclusions are comma-separated
+literal values, not regular expressions or glob patterns. Each value can be an
+owner (`actions`), repository (`actions/checkout`), or action path
+(`owner/repo/path/to/action`).
 
 ## :gear: Inputs
 
 | Input               | Description                                                                                | Required           | Default                 |
 | ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ----------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                  |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`   |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-actions`        |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update GitHub Actions` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update GitHub Actions` |
-| `file-glob`         | Glob for workflow files (relative to repo root)                                            | :x:                | `.github/**/*.yml`      |
-| `check-files`       | Path/glob used to detect and include changed files in the PR                               | :x:                | `.github`               |
-| `excluded-actions`  | Comma-separated literal action owners, repositories, or paths to exclude                   | :x:                | -                       |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                       |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                 |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                 |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                 |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                 |
+| `base-branch`       | Base branch for the pull request | :white_check_mark: | `main` |
+| `token`             | GitHub token for authentication | :x: | `${{ github.token }}` |
+| `branch-prefix`     | Prefix for the update branch | :x: | `update-actions` |
+| `pr-title`          | Title of the pull request | :x: | `Update GitHub Actions` |
+| `commit-message`    | Commit message for the update | :x: | `Update GitHub Actions` |
+| `file-glob`         | Glob for workflow files, relative to the repository root | :x: | `.github/**/*.yml` |
+| `check-files`       | Path or glob for changed files in the pull request | :x: | `.github` |
+| `excluded-actions`  | Comma-separated action owners, repositories, or paths to exclude | :x: | - |
+| `app-slug`          | GitHub App slug for commit attribution | :x: | - |
+| `auto-merge`        | Enable automatic pull request merge | :x: | `false` |
+| `merge-method`      | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
+| `dry-run`           | Run without creating a pull request | :x: | `false` |
 
 ## :warning: Prerequisites
 
-- Workflow files must be under `.github` and match the configured `file-glob`
-- The action requires write permissions to create branches and pull requests
-- GitHub CLI must be available in the runner environment
+- Put workflow files under `.github` and match the configured `file-glob`.
+- Give the action write permissions to create branches and pull requests.
+- Make sure that GitHub CLI is available on the runner.

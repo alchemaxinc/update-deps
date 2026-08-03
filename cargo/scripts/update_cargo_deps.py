@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Update Cargo.toml dependencies with Cargo's formatting-preserving upgrader."""
+"""Update Cargo.toml dependencies with the Cargo format-preserving upgrader."""
 
 import argparse
 import json
@@ -46,7 +46,7 @@ def get_direct_dependencies(manifest_path):
 
 
 def find_build_metadata(content):
-    """Map normalized requirements to their unique requested build metadata."""
+    """Map normalized requirements to unique requested build metadata."""
     metadata = {}
     for match in BUILD_METADATA_PATTERN.finditer(content):
         requirement = match.group("requirement")
@@ -59,7 +59,7 @@ def find_build_metadata(content):
 
 
 def restore_build_metadata(content, before, after, metadata):
-    """Restore build metadata only when its upgraded requirement is unambiguous."""
+    """Restore build metadata only when the updated requirement is unambiguous."""
     restored = {}
     for identity, old_requirement in before.items():
         new_requirement = after.get(identity)
@@ -76,8 +76,8 @@ def restore_build_metadata(content, before, after, metadata):
         new_value = f'"{new_requirement}+{suffix}"'
         if content.count(old_value) != 1:
             print(
-                f"::warning::Could not unambiguously preserve build metadata for "
-                f"{identity[1]} in Cargo.toml"
+                f"::warning::Cannot preserve build metadata for {identity[1]} "
+                f"in Cargo.toml because the requirement is ambiguous."
             )
             continue
         content = content.replace(old_value, new_value, 1)
@@ -86,7 +86,7 @@ def restore_build_metadata(content, before, after, metadata):
 
 
 def process_manifest(manifest_path, keep_build_metadata=False):
-    """Upgrade a manifest with Cargo and return its changed requirements."""
+    """Update a manifest with Cargo and return changed requirements."""
     manifest = Path(manifest_path)
     before = get_direct_dependencies(str(manifest))
     metadata = find_build_metadata(manifest.read_text()) if keep_build_metadata else {}
@@ -134,7 +134,7 @@ def process_manifest(manifest_path, keep_build_metadata=False):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Update Cargo.toml dependencies to their latest crates.io versions."
+        description="Update Cargo.toml dependencies to the latest crates.io versions."
     )
     parser.add_argument(
         "manifests",

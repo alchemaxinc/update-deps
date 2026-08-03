@@ -2,13 +2,13 @@
 'use strict';
 
 /**
- * Compares two dependency range snapshots and prints one tab separated
- * `package<TAB>old<TAB>new` line per changed range.
+ * Compare two dependency range snapshots. Print one tab-separated
+ * `package<TAB>old<TAB>new` line for each changed range.
  *
  * Usage: node diff-dependency-ranges.js <before.json> <after.json>
  *
- * Packages that were added or removed are ignored: only ranges present in
- * both snapshots represent an update.
+ * Ignore added and removed packages. Only ranges in both snapshots represent
+ * an update.
  */
 
 const fs = require('fs');

@@ -1,1 +1,1 @@
-# Empty variables file for testing
+# Empty variables file for tests.

@@ -1,6 +1,6 @@
 name: 'Update pnpm Dependencies'
 
-description: 'Update pnpm dependencies using pnpm update'
+description: 'Update pnpm dependencies with pnpm update.'
 
 inputs:
   token:
@@ -10,7 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -19,46 +19,46 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update pnpm Dependencies'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update pnpm dependencies'
 
   excluded-packages:
     required: false
-    description: 'Packages to exclude from updates, in a comma-separated list format'
+    description: 'Comma-separated packages to exclude from updates'
 
   relock:
     required: false
-    description: 'Whether pnpm-lock.yaml should be refreshed, even if no other updates are available'
+    description: 'Regenerate pnpm-lock.yaml when no package updates exist'
     default: 'false'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
+    description: 'Test mode updates a pre-checked-out working tree. It does not check out or create a pull request.'
     default: 'false'
 
 runs:
@@ -125,8 +125,8 @@ runs:
         fi
 
         if [ "$RELOCK" = "true" ]; then
-          # Keep existing optional dependencies for other platforms. A fresh
-          # lockfile generated on one runner can omit them.
+          # Keep optional dependencies for other platforms. A lockfile from one
+          # runner can omit these dependencies.
           pnpm install --ignore-scripts --no-frozen-lockfile
         fi
 
@@ -177,7 +177,7 @@ runs:
       run: |
         empty_message=""
         if [ "$HAS_UPDATES" != "true" ]; then
-          empty_message="Regenerated \`pnpm-lock.yaml\` without package version changes."
+          empty_message="Regenerated \`pnpm-lock.yaml\`. No package versions changed."
         fi
 
         python3 "$PR_BODY_SCRIPT" \

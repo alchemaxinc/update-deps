@@ -110,9 +110,11 @@ class TestUpdateProviderVersions(unittest.TestCase):
             self.assertIn('version = "~> 5.2"', updated)
 
     def test_updates_when_current_equals_latest(self):
-        """Covers the real-world case: terraform init already installed the
-        latest version within the constraint, so current == latest, but the
-        constraint in the .tf file is still stale (e.g. ~> 6.0 vs 6.35.1)."""
+        """Test an existing latest version with a stale .tf constraint.
+
+        terraform init already installed the latest allowed version. The .tf
+        constraint can still be stale, for example ~> 6.0 instead of 6.35.1.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = Path(tmpdir)
             versions_path = workdir / "versions.json"

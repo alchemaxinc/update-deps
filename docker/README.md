@@ -1,14 +1,13 @@
 # Update Docker Images :whale:
 
-This GitHub Action scans `Dockerfile`s and `docker-compose` files (and, optionally,
-markdown documentation), discovers Docker image references, looks up the latest
-matching tag for each image via [`crane`](https://github.com/google/go-containerregistry),
-and opens a pull request bumping every image to the latest **matching** tag.
+This GitHub Action scans `Dockerfile` and `docker-compose` files. It can also
+scan Markdown files. It finds Docker image references and gets the latest
+matching tag with [`crane`](https://github.com/google/go-containerregistry).
+It opens a pull request with the updated tags.
 
-The match is variant-aware: `rust:1.94-alpine` is bumped to the latest
-`<x.y>-alpine`, never to `1.95-slim-bookworm` or to `latest`. Pinning depth is
-preserved too — `1` stays major-only, `1.94` stays minor-only, `v1.42.1` stays
-patch.
+Tag matching preserves variants. `rust:1.94-alpine` updates to the latest
+`<x.y>-alpine`, not `1.95-slim-bookworm` or `latest`. It also preserves pin
+depth. `1` stays major-only. `1.94` stays minor-only. `v1.42.1` stays patch-level.
 
 ## :rocket: Usage
 
@@ -47,19 +46,18 @@ python cli.py \
   --dry-run
 ```
 
-`crane` must be on `PATH`. The composite action installs it via
-`scripts/install_crane.sh` (pinned release). For local runs
-install it yourself with:
+`crane` must be on `PATH`. The composite action installs its pinned release
+with `scripts/install_crane.sh`. For a local run, install it:
 
 ```bash
 brew install crane           # macOS
-# or download the pinned release used in CI:
+# Or install the pinned CI release:
 bash scripts/install_crane.sh v0.21.5
 ```
 
 ## :wrench: How tag matching works
 
-Each image reference is parsed into `(prefix, numeric, suffix)`:
+The action parses each image reference into `(prefix, numeric, suffix)`:
 
 | Tag                         | prefix                  | numeric      | suffix           |
 | --------------------------- | ----------------------- | ------------ | ---------------- |
@@ -70,39 +68,38 @@ Each image reference is parsed into `(prefix, numeric, suffix)`:
 | `1-alpine`                  | ``                      | `(1,)`       | `-alpine`        |
 | `latest`, `nightly`, `edge` | _(malformed — skipped)_ |              |                  |
 
-Only tags with the **same prefix and same suffix** are considered when picking
-the latest. The selected tag is then re-rendered at the same dot-depth as the
-original.
+The action considers only tags with the same prefix and suffix. It writes the
+selected tag at the original dot depth.
 
-Refs containing `@sha256:` (digest pins, with or without a tag) are skipped in
-v1. `FROM scratch` and stage-alias references in multi-stage Dockerfiles
-(`FROM builder`) are also skipped.
+Version 1 skips references with `@sha256:` digest pins. It also skips
+`FROM scratch` and stage aliases in multi-stage Dockerfiles, such as
+`FROM builder`.
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                   |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                    |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`     |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-docker-images`    |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update Docker Images`    |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update Docker images`    |
-| `dockerfile-glob`   | Glob for Dockerfiles to scan (relative to repo root)                                       | :x:                | `**/Dockerfile*`          |
-| `compose-glob`      | Glob for docker-compose files                                                              | :x:                | `**/docker-compose*.y*ml` |
-| `markdown-glob`     | Optional glob for markdown files. Empty disables markdown updates.                         | :x:                | -                         |
-| `excluded-images`   | Comma-separated literal registry, registry/repo, or registry/repo:tag values to exclude    | :x:                | -                         |
-| `crane-version`     | Pinned `google/go-containerregistry` release used to install crane                         | :x:                | `v0.21.5`                 |
-| `check-files`       | Path/glob used to detect and include changed files in the PR                               | :x:                | `.`                       |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                   |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
+| Input | Description | Required | Default |
+| --- | --- | --- | --- |
+| `base-branch` | Base branch for the pull request | :white_check_mark: | `main` |
+| `token` | GitHub token for authentication | :x: | `${{ github.token }}` |
+| `branch-prefix` | Prefix for the update branch | :x: | `update-docker-images` |
+| `pr-title` | Title of the pull request | :x: | `Update Docker Images` |
+| `commit-message` | Commit message for the update | :x: | `Update Docker images` |
+| `dockerfile-glob` | Glob for Dockerfiles, relative to the repository root | :x: | `**/Dockerfile*` |
+| `compose-glob` | Glob for docker-compose files | :x: | `**/docker-compose*.y*ml` |
+| `markdown-glob` | Glob for Markdown files. An empty value disables Markdown updates. | :x: | - |
+| `excluded-images` | Comma-separated registry, repository, or tag values to exclude | :x: | - |
+| `crane-version` | Pinned `google/go-containerregistry` release for crane | :x: | `v0.21.5` |
+| `check-files` | Path or glob for changed files in the pull request | :x: | `.` |
+| `app-slug` | GitHub App slug for commit attribution | :x: | - |
+| `auto-merge` | Enable automatic pull request merge | :x: | `false` |
+| `merge-method` | Merge method: `merge`, `squash`, or `rebase` | :x: | `merge` |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x: | `false` |
+| `dry-run` | Run without creating a pull request | :x: | `false` |
 
 ## :warning: Prerequisites
 
-- The action requires write permissions to create branches and pull requests
-- `crane` is installed by the action itself; no setup-crane action is required
-- v1 only targets public registries reachable anonymously (Docker Hub,
-  `public.ecr.aws`, `ghcr.io` public images, etc.). Use `excluded-images` to
-  skip private repos.
+- Give the action write permissions to create branches and pull requests.
+- The action installs `crane`. You do not need a setup-crane action.
+- Version 1 targets public registries that allow anonymous access, including
+  Docker Hub, `public.ecr.aws`, and public `ghcr.io` images. Use
+  `excluded-images` to skip private repositories.

@@ -10,7 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -19,52 +19,52 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update Cargo Dependencies'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update Cargo dependencies'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   update-toolchain:
     required: false
-    description: 'Whether to update the Rust toolchain version'
+    description: 'Update the Rust toolchain version'
     default: 'true'
 
   update-deps:
     required: false
-    description: 'Whether to update Cargo dependencies'
+    description: 'Update Cargo dependencies'
     default: 'true'
 
   keep-build-metadata:
     required: false
-    description: "Preserve SemVer build metadata (the '+...' suffix) in upgraded version requirements"
+    description: "Preserve SemVer build metadata, the '+...' suffix, in updated version requirements."
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Test mode: skips checkout and PR creation but updates a pre-checked-out working tree'
+    description: 'Test mode updates a pre-checked-out working tree. It does not check out or create a pull request.'
     default: 'false'
 
 runs:
@@ -102,7 +102,7 @@ runs:
         fi
         version=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
         echo "version=$version" >> "$GITHUB_OUTPUT"
-        echo "::notice::Current Rust toolchain version: $version"
+        echo "::notice::Rust toolchain version: $version"
 
         is_stable="false"
         if echo "$version" | grep -qE '^[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
@@ -111,7 +111,7 @@ runs:
         echo "is_stable=$is_stable" >> "$GITHUB_OUTPUT"
 
         if [ "$is_stable" = "false" ]; then
-          echo "::warning::Rust channel '$version' is not a stable version. Toolchain update will be skipped."
+          echo "::warning::Rust channel '$version' is not stable. Skip the toolchain update."
         fi
 
     - name: Setup Rust toolchain
@@ -175,7 +175,7 @@ runs:
         manifests_file="$RUNNER_TEMP/cargo-manifests"
         find . -name Cargo.toml -not -path '*/target/*' -print0 | sort -z > "$manifests_file"
         echo "manifests_file=$manifests_file" >> "$GITHUB_OUTPUT"
-        echo "::notice::Discovered $(tr -cd '\0' < "$manifests_file" | wc -c | tr -d ' ') Cargo manifests"
+        echo "::notice::The action found $(tr -cd '\0' < "$manifests_file" | wc -c | tr -d ' ') Cargo manifests"
 
     - name: Update Cargo.toml dependencies
       id: update_deps
