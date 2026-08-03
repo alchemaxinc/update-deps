@@ -68,17 +68,23 @@ curl -fsSL -o "$tmp_dir/$asset" "$base_url/$asset"
 curl -fsSL -o "$tmp_dir/checksums.txt" "$base_url/checksums.txt"
 
 # checksums.txt contains "<sha256>  <asset>" lines for every asset; pick the
-# one matching our tarball and feed it to sha256sum -c.
+# one matching our tarball and verify it with the platform's SHA-256 tool.
 expected_line="$(grep " ${asset}\$" "$tmp_dir/checksums.txt" || true)"
 if [[ -z "$expected_line" ]]; then
   echo "::error::No checksum entry for $asset in checksums.txt"
   exit 1
 fi
 
-(
-  cd "$tmp_dir"
-  echo "$expected_line" | sha256sum -c -
-)
+expected_checksum="${expected_line%% *}"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual_checksum="$(sha256sum "$tmp_dir/$asset" | awk '{print $1}')"
+else
+  actual_checksum="$(shasum -a 256 "$tmp_dir/$asset" | awk '{print $1}')"
+fi
+if [[ "$actual_checksum" != "$expected_checksum" ]]; then
+  echo "::error::Checksum verification failed for $asset"
+  exit 1
+fi
 
 tar -xzf "$tmp_dir/$asset" -C "$bin_dir" crane
 chmod +x "$bin_dir/crane"
