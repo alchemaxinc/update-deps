@@ -141,17 +141,27 @@ runs:
         node "$GITHUB_ACTION_PATH/scripts/dependency-ranges.js" \
           package.json > "$RUNNER_TEMP/pnpm-ranges-after.json"
 
-        updates_file="$RUNNER_TEMP/pnpm-updates.tsv"
-        node "$GITHUB_ACTION_PATH/scripts/diff-dependency-ranges.js" \
-          "$RUNNER_TEMP/pnpm-ranges-before.json" \
-          "$RUNNER_TEMP/pnpm-ranges-after.json" > "$updates_file"
+        updates_file="$RUNNER_TEMP/pnpm-updates.json"
+        node - "$RUNNER_TEMP/pnpm-ranges-before.json" \
+          "$RUNNER_TEMP/pnpm-ranges-after.json" > "$updates_file" <<'NODE'
+        const fs = require("fs");
+        const before = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+        const after = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+        const updates = Object.keys(before)
+          .filter(name => Object.hasOwn(after, name) && after[name] !== before[name])
+          .sort()
+          .map(name => [name, before[name], after[name]]);
+        process.stdout.write(JSON.stringify(updates));
+        NODE
 
-        while IFS=$'\t' read -r pkg old_ver new_ver; do
-          [ -z "$pkg" ] && continue
-          echo "::notice::Updated $pkg from $old_ver to $new_ver"
-        done < "$updates_file"
+        node - "$updates_file" <<'NODE'
+        const fs = require("fs");
+        for (const [pkg, oldVersion, newVersion] of JSON.parse(fs.readFileSync(process.argv[2], "utf8"))) {
+          console.log(`::notice::Updated ${pkg} from ${oldVersion} to ${newVersion}`);
+        }
+        NODE
 
-        if [ -s "$updates_file" ]; then
+        if [ "$(cat "$updates_file")" != "[]" ]; then
           echo "has_updates=true" >> "$GITHUB_OUTPUT"
         else
           echo "has_updates=false" >> "$GITHUB_OUTPUT"
@@ -174,7 +184,7 @@ runs:
         python3 "$PR_BODY_SCRIPT" \
           --title "# pnpm Dependencies Update" \
           --columns "Package,Old,New" \
-          --updates-file "$RUNNER_TEMP/pnpm-updates.tsv" \
+          --updates-file "$RUNNER_TEMP/pnpm-updates.json" \
           --empty-message "$empty_message" \
           --source-url "https://github.com/alchemaxinc/update-deps/tree/main/pnpm"
 
@@ -207,7 +217,7 @@ runs:
         files: ${{ steps.files.outputs.files }}
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'

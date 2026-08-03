@@ -171,11 +171,16 @@ runs:
           fi
         done <<< "$after"
 
-        {
-          echo "updates<<ENDOFUPDATES"
-          printf "%s" "$updates"
-          echo "ENDOFUPDATES"
-        } >> "$GITHUB_OUTPUT"
+        updates_json=$(printf "%s" "$updates" | python3 -c '
+        import json
+        import sys
+
+        json.dump(
+            [line.split("\t") for line in sys.stdin.read().splitlines() if line],
+            sys.stdout,
+        )
+        ')
+        echo "updates=$updates_json" >> "$GITHUB_OUTPUT"
 
     - name: Build PR description
       id: build_pr_body
@@ -186,9 +191,9 @@ runs:
         STRATEGY: ${{ inputs.strategy }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
-        updates_file="$RUNNER_TEMP/go-updates.tsv"
+        updates_file="$RUNNER_TEMP/go-updates.json"
         preface_file="$RUNNER_TEMP/go-pr-preface.md"
-        printf "%s\n" "$UPDATES" > "$updates_file"
+        printf "%s" "$UPDATES" > "$updates_file"
         echo "**Strategy Used:** \`$STRATEGY\`" > "$preface_file"
 
         python3 "$PR_BODY_SCRIPT" \
@@ -216,7 +221,7 @@ runs:
         files: 'go.mod go.sum'
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'

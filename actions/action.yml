@@ -127,8 +127,16 @@ runs:
         ACTION_UPDATES: ${{ steps.update_actions.outputs.action_updates }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
-        updates_file="$RUNNER_TEMP/action-updates.tsv"
-        printf "%s\n" "$ACTION_UPDATES" > "$updates_file"
+        updates_file="$RUNNER_TEMP/action-updates.json"
+        printf "%s" "$ACTION_UPDATES" | python3 -c '
+        import json
+        import sys
+
+        json.dump(
+            [line.split("\t") for line in sys.stdin.read().splitlines() if line],
+            sys.stdout,
+        )
+        ' > "$updates_file"
 
         python3 "$PR_BODY_SCRIPT" \
           --title "# GitHub Actions Update" \
@@ -154,7 +162,7 @@ runs:
         files: ${{ inputs.check-files }}
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'
