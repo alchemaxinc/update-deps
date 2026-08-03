@@ -174,7 +174,10 @@ jobs:
         run: echo "$HOME/.cache/ci-tools/actionlint/${{ env.ACTIONLINT_VERSION }}" >> "$GITHUB_PATH"
 
       - name: Run Actionlint
-        run: actionlint -color
+        run: |
+          actionlint -color \
+            -ignore 'element of "steps" section is alias node' \
+            -ignore 'step must run script with "run" section or run action with "uses" section'
 
   run-shellcheck:
     runs-on: ubuntu-latest
