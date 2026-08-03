@@ -9,6 +9,19 @@ import scripts.update_provider_versions as module
 
 
 class TestUpdateProviderVersions(unittest.TestCase):
+    def test_preserves_constraint_operators_and_bounds(self):
+        self.assertEqual(
+            module.update_constraint("~> 5.0", "5.2.1"), "~> 5.2"
+        )
+        self.assertEqual(
+            module.update_constraint("= 5.0.0", "5.2.1"), "= 5.2.1"
+        )
+        self.assertIsNone(module.update_constraint(">= 5.0, < 6.0", "5.2.1"))
+        self.assertIsNone(module.update_constraint("~> 5.0.0", "5.2.1"))
+
+    def test_requires_explicit_major_upgrade(self):
+        self.assertIsNone(module.update_constraint("~> 5.0", "6.0.0"))
+
     def test_updates_version_constraints(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             workdir = Path(tmpdir)

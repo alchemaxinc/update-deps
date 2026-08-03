@@ -7,6 +7,48 @@ import subprocess
 import sys
 
 
+def parse_version(version):
+    """Return a numeric SemVer tuple, or None for unsupported versions."""
+    match = re.fullmatch(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?", version)
+    if not match:
+        return None
+    return tuple(int(part or 0) for part in match.groups())
+
+
+def update_constraint(constraint, latest):
+    """Return a policy-preserving update, or None when an update is unsafe.
+
+    Multi-clause constraints express an explicit range policy. Terraform will
+    select the newest allowed version when its lock file is refreshed, so they
+    must not be rewritten. Major upgrades are likewise left for an explicit
+    user change.
+    """
+    if "," in constraint:
+        return None
+
+    match = re.fullmatch(r"(\s*(?:~>|=)?\s*)(\d+(?:\.\d+){0,2})(\s*)", constraint)
+    if not match:
+        return None
+
+    prefix, current_text, suffix = match.groups()
+    current = parse_version(current_text)
+    latest_parsed = parse_version(latest)
+    if current is None or latest_parsed is None or latest_parsed[0] != current[0]:
+        return None
+
+    # Pessimistic constraints with three components allow patch updates only;
+    # broader constraints allow updates within the current major series.
+    if prefix.strip().startswith("~>") and current_text.count(".") == 2:
+        if latest_parsed[:2] != current[:2]:
+            return None
+
+    precision = current_text.count(".") + 1
+    new_version = ".".join(str(part) for part in latest_parsed[:precision])
+    if new_version == current_text:
+        return None
+    return f"{prefix}{new_version}{suffix}"
+
+
 def main():
     # Configure logging
     logging.basicConfig(
@@ -132,19 +174,7 @@ def main():
             if not provider_info["latest"]:
                 continue
 
-            # Extract major.minor version from latest version (ignore patch)
             latest_version = provider_info["latest"]
-            version_parts = latest_version.split(".")
-            if len(version_parts) >= 2:
-                new_version_constraint = f"~> {version_parts[0]}.{version_parts[1]}"
-            else:
-                # Fallback if version format is unexpected
-                logging.warning(
-                    "Unexpected version format for %s: %s",
-                    namespace,
-                    latest_version,
-                )
-                new_version_constraint = f"~> {version_parts[0]}.0"
 
             # The source in .tf files looks like "hashicorp/aws" (namespace/name)
             # not the full path like "registry.terraform.io/hashicorp/aws"
@@ -161,19 +191,29 @@ def main():
                 rf"[^}}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
             )
 
+            old_constraint_match = re.search(
+                pattern, content, flags=re.MULTILINE | re.DOTALL
+            )
+            if old_constraint_match is None:
+                logging.debug("No match found for %s in %s", name, tf_file)
+                continue
+
+            old_constraint = old_constraint_match.group(2)
+            new_version_constraint = update_constraint(old_constraint, latest_version)
+            if new_version_constraint is None:
+                logging.info(
+                    "Skipping %s in %s: %r does not permit a safe automatic update to %s",
+                    name,
+                    tf_file,
+                    old_constraint,
+                    latest_version,
+                )
+                continue
+
             replacement = f"\\g<1>{new_version_constraint}\\g<3>"
             new_content = re.sub(
                 pattern, replacement, content, flags=re.MULTILINE | re.DOTALL
             )
-
-            if new_content == content:
-                logging.debug("No match found for %s in %s", name, tf_file)
-                continue
-
-            old_constraint_match = re.search(
-                pattern, content, flags=re.MULTILINE | re.DOTALL
-            )
-            old_constraint = old_constraint_match.group(2)
             content = new_content
             all_updates.append(
                 {
