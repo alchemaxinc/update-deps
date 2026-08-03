@@ -64,8 +64,10 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 echo "::notice::Downloading crane $version ($asset)"
-curl -fsSL -o "$tmp_dir/$asset" "$base_url/$asset"
-curl -fsSL -o "$tmp_dir/checksums.txt" "$base_url/checksums.txt"
+curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+  --connect-timeout 10 --max-time 60 -o "$tmp_dir/$asset" "$base_url/$asset"
+curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+  --connect-timeout 10 --max-time 60 -o "$tmp_dir/checksums.txt" "$base_url/checksums.txt"
 
 # checksums.txt contains "<sha256>  <asset>" lines for every asset; pick the
 # one matching our tarball and verify it with the platform's SHA-256 tool.
