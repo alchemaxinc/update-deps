@@ -100,17 +100,17 @@ runs:
       run: |
         yq_version="${{ inputs.yq-version }}"
 
-        case "${yq_version}:$(uname -s):$(uname -m)" in
-          v4.44.1:Linux:x86_64)
+        case "$(uname -s):$(uname -m)" in
+          Linux:x86_64)
             yq_asset='yq_linux_amd64'
             ;;
-          v4.44.1:Linux:aarch64 | v4.44.1:Linux:arm64)
+          Linux:aarch64 | Linux:arm64)
             yq_asset='yq_linux_arm64'
             ;;
-          v4.44.1:Darwin:x86_64)
+          Darwin:x86_64)
             yq_asset='yq_darwin_amd64'
             ;;
-          v4.44.1:Darwin:arm64)
+          Darwin:arm64)
             yq_asset='yq_darwin_arm64'
             ;;
           *)
