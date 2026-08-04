@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Cargo Dependencies
-        uses: alchemaxinc/update-deps/cargo@v2.11.0
+        uses: alchemaxinc/update-deps/cargo@v2.11.1
         with:
           token: ${{ github.token }}
           base-branch: 'main'
@@ -38,7 +38,7 @@ jobs:
 
 ```yaml
 - name: Update Rust Toolchain
-  uses: alchemaxinc/update-deps/cargo@v2.11.0
+  uses: alchemaxinc/update-deps/cargo@v2.11.1
   with:
     token: ${{ github.token }}
     update-deps: 'false'
@@ -48,7 +48,7 @@ jobs:
 
 ```yaml
 - name: Update Cargo Dependencies
-  uses: alchemaxinc/update-deps/cargo@v2.11.0
+  uses: alchemaxinc/update-deps/cargo@v2.11.1
   with:
     token: ${{ github.token }}
     update-toolchain: 'false'
