@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update GitHub Actions
-        uses: alchemaxinc/update-deps/actions@v2.11.0
+        uses: alchemaxinc/update-deps/actions@v2.11.1
         with:
           token: ${{ github.token }}
           base-branch: 'main'
