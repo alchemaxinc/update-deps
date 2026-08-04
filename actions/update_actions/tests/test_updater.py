@@ -7,7 +7,13 @@ from unittest import mock
 from update_actions import updater
 
 
+ACTION = Path(__file__).parents[2] / "action.yml"
+
+
 class TestUpdater(unittest.TestCase):
+    def test_action_does_not_cache_workspace_dependencies(self):
+        self.assertNotIn("cache: pip", ACTION.read_text(encoding="utf-8"))
+
     def test_update_actions_writes_updates(self):
         cases = [
             {

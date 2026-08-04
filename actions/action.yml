@@ -98,7 +98,6 @@ runs:
         PYTHON_VERSION: '3.14'
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache: pip
 
     - name: Install dependencies
       if: steps.check_existing_pr.outputs.exists != 'true'
