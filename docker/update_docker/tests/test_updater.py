@@ -5,6 +5,10 @@ from pathlib import Path
 
 from update_docker.updater import update_docker
 
+
+ACTION = Path(__file__).parents[2] / "action.yml"
+
+
 # Use stand-in tag lists by crane repository. Remove the implicit docker.io
 # prefix so tests do not call the shell.
 FAKE_TAGS = {
@@ -20,6 +24,9 @@ def fake_lister(repo: str) -> list[str]:
 
 
 class TestUpdater(unittest.TestCase):
+    def test_action_does_not_cache_workspace_dependencies(self):
+        self.assertNotIn("cache: pip", ACTION.read_text(encoding="utf-8"))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
