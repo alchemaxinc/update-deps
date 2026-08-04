@@ -1,6 +1,6 @@
 name: 'Update CircleCI Orbs'
 
-description: 'Update CircleCI orbs to their latest versions'
+description: 'Update CircleCI orbs to the latest versions.'
 
 inputs:
   token:
@@ -10,8 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
-    default: 'main'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -20,47 +19,47 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update CircleCI Orbs'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update CircleCI orbs'
 
   circleci-config-file:
     required: false
-    description: 'Path to the CircleCI config file'
+    description: 'Path to the CircleCI configuration file'
     default: '.circleci/config.yml'
 
   yq-version:
     required: false
-    description: 'Version of yq to use'
+    description: 'Version of yq'
     default: 'v4.44.1'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Test mode updates a pre-checked-out working tree. It does not check out or create a pull request.'
     default: 'false'
 
 runs:
@@ -93,20 +92,45 @@ runs:
       uses: actions/cache@v6
       with:
         path: ~/.local/bin/yq
-        key: yq-${{ inputs.yq-version }}-linux-amd64
+        key: yq-${{ inputs.yq-version }}-${{ runner.os }}-${{ runner.arch }}
 
     - name: Install yq
       if: steps.cache-yq.outputs.cache-hit != 'true' && steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
       run: |
+        yq_version="${{ inputs.yq-version }}"
+
+        case "$(uname -s):$(uname -m)" in
+          Linux:x86_64)
+            yq_asset='yq_linux_amd64'
+            ;;
+          Linux:aarch64 | Linux:arm64)
+            yq_asset='yq_linux_arm64'
+            ;;
+          Darwin:x86_64)
+            yq_asset='yq_darwin_amd64'
+            ;;
+          Darwin:arm64)
+            yq_asset='yq_darwin_arm64'
+            ;;
+          *)
+            echo "::error::Unsupported yq version or platform: ${yq_version} on $(uname -s) $(uname -m)"
+            exit 1
+            ;;
+        esac
+
         mkdir -p ~/.local/bin
-        curl -L https://github.com/mikefarah/yq/releases/download/${{ inputs.yq-version }}/yq_linux_amd64 -o ~/.local/bin/yq
-        chmod +x ~/.local/bin/yq
+        yq_path="$HOME/.local/bin/yq"
+        curl --fail --location --retry 3 --silent --show-error \
+          "https://github.com/mikefarah/yq/releases/download/${yq_version}/${yq_asset}" \
+          --output "$yq_path"
+
+        chmod +x "$yq_path"
 
     - name: Add yq to PATH
       if: steps.check_existing_pr.outputs.exists != 'true'
       shell: bash
-      run: echo "~/.local/bin" >> $GITHUB_PATH
+      run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
     - name: Update CircleCI Orbs
       id: update_orbs
@@ -115,33 +139,48 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         CONFIG_FILE: ${{ inputs.circleci-config-file }}
+        DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        # Read orbs from config.yml
+        # Read orbs from the configuration file.
         orbs=$(yq eval '.orbs // {} | keys | .[]' "$CONFIG_FILE")
         updates=""
 
         for orb in $orbs; do
-          echo "::debug::Processing orb: $orb"
+          echo "::debug::The action processes orb: $orb"
 
-          # Capture the old orb value (namespace@version)
+          # Read the current orb value (namespace@version).
           old_value=$(ORB="$orb" yq eval '.orbs[env(ORB)]' "$CONFIG_FILE")
           if [[ "$old_value" != *@* ]]; then
-            echo "::warning::Skipping $orb because '$old_value' is not a versioned orb reference"
+            echo "::warning::The action skips $orb. '$old_value' is not a versioned orb reference."
             continue
           fi
 
-          # Get the orb namespace (e.g., "circleci/aws-cli" from "circleci/aws-cli@5.3.5")
+          # Get the orb namespace and name, for example "circleci" and "aws-cli".
           orb_full_name=$(echo "$old_value" | cut -d'@' -f1)
-          orb_repo_name="${orb_full_name##*/}"
+          orb_namespace="${orb_full_name%%/*}"
+          orb_name="${orb_full_name#*/}"
 
-          # Get the current version
+          # Get the current version.
           current_version=$(echo "$old_value" | cut -d'@' -f2)
 
-          # Get latest tag from GitHub
-          latest_tag=$(gh api "repos/CircleCI-Public/${orb_repo_name}-orb/releases/latest" --jq '.tag_name' | sed 's/^v//')
+          # Get the latest published version from the CircleCI orb registry.
+          orb_id=$(curl --fail --location --retry 3 --silent --show-error --get \
+            --data-urlencode "ns=${orb_namespace}" \
+            --data-urlencode "name=${orb_name}" \
+            'https://app.circleci.com/api/v2/orbs' \
+            | yq eval -r '.items[0].id // ""')
+
+          if [ -z "$orb_id" ]; then
+            echo "::error::Could not find orb ${orb_full_name} in the CircleCI orb registry"
+            exit 1
+          fi
+
+          latest_tag=$(curl --fail --location --retry 3 --silent --show-error \
+            "https://app.circleci.com/api/v2/orbs/${orb_id}?version=volatile" \
+            | yq eval -r '.versions[0] // ""')
 
           if [ -z "$latest_tag" ]; then
-            echo "::error::Could not find latest tag for ${orb_repo_name}-orb, failing"
+            echo "::error::Could not find a published version for ${orb_full_name}, failing"
             exit 1
           fi
 
@@ -149,19 +188,28 @@ runs:
 
           if [ "$current_version" != "$latest_tag" ]; then
             new_value="${orb_full_name}@${latest_tag}"
-            ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
-            echo "::notice::Updated $orb from $current_version to $latest_tag"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::notice::Planned update: $orb from $current_version to $latest_tag"
+            else
+              ORB="$orb" NEW_VALUE="$new_value" yq eval -i '.orbs[env(ORB)] = env(NEW_VALUE)' "$CONFIG_FILE"
+              echo "::notice::Updated $orb from $current_version to $latest_tag"
+            fi
             updates+="${orb_full_name}"$'\t'"${current_version}"$'\t'"${latest_tag}"$'\n'
           else
-            echo "::debug::$orb is already at latest version $latest_tag"
+            echo "::debug::$orb already uses latest version $latest_tag"
           fi
         done
 
-        {
-          echo "orb_updates<<ENDOFUPDATES"
-          printf "%s" "$updates"
-          echo "ENDOFUPDATES"
-        } >> "$GITHUB_OUTPUT"
+        updates_json=$(printf "%s" "$updates" | python3 -c '
+        import json
+        import sys
+
+        json.dump(
+            [line.split("\t") for line in sys.stdin.read().splitlines() if line],
+            sys.stdout,
+        )
+        ')
+        echo "orb_updates=$updates_json" >> "$GITHUB_OUTPUT"
 
     - name: Build PR description
       id: build_pr_body
@@ -171,8 +219,8 @@ runs:
         ORB_UPDATES: ${{ steps.update_orbs.outputs.orb_updates }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
-        updates_file="$RUNNER_TEMP/circleci-orb-updates.tsv"
-        printf "%s\n" "$ORB_UPDATES" > "$updates_file"
+        updates_file="$RUNNER_TEMP/circleci-orb-updates.json"
+        printf "%s" "$ORB_UPDATES" > "$updates_file"
 
         python3 "$PR_BODY_SCRIPT" \
           --title "# CircleCI Orbs Update" \
@@ -198,7 +246,7 @@ runs:
         files: ${{ inputs.circleci-config-file }}
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'

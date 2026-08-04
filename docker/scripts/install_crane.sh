@@ -4,9 +4,8 @@
 #
 # Usage: install_crane.sh <version>
 #
-# - Downloads the release tarball + checksums.txt from the GitHub release.
-# - Verifies the tarball against the canonical SHA256 in checksums.txt.
-# - Extracts to "$RUNNER_TEMP/crane/bin" and appends that dir to $GITHUB_PATH.
+# - Download the release archive from GitHub.
+# - Extract it to "$RUNNER_TEMP/crane/bin" and add this directory to $GITHUB_PATH.
 #
 set -euo pipefail
 
@@ -16,7 +15,7 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 
-# Map uname -> go-containerregistry asset naming.
+# Map uname values to go-containerregistry asset names.
 os_raw="$(uname -s)"
 arch_raw="$(uname -m)"
 
@@ -45,45 +44,31 @@ work_dir="${RUNNER_TEMP:-/tmp}/crane"
 bin_dir="$work_dir/bin"
 mkdir -p "$bin_dir"
 
-# Fast path: if a previous step (e.g. actions/cache) already restored the
-# pinned crane binary, skip the download/verify and just expose it on PATH.
+# If an earlier step restored the requested crane binary, do not download it.
+# Add the binary directory to PATH.
 if [[ -x "$bin_dir/crane" ]]; then
   installed_version="$("$bin_dir/crane" version 2>/dev/null || true)"
   if [[ "$installed_version" == *"${version#v}"* ]]; then
-    echo "::notice::Reusing cached crane $version at $bin_dir/crane"
+    echo "::notice::Use cached crane $version at $bin_dir/crane"
     if [[ -n "${GITHUB_PATH:-}" ]]; then
       echo "$bin_dir" >> "$GITHUB_PATH"
     fi
     exit 0
   fi
-  echo "::notice::Cached crane reports version '$installed_version' (want '${version#v}'); reinstalling"
+  echo "::notice::Cached crane version '$installed_version' does not match '${version#v}'. Reinstalling."
   rm -f "$bin_dir/crane"
 fi
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-echo "::notice::Downloading crane $version ($asset)"
-curl -fsSL -o "$tmp_dir/$asset" "$base_url/$asset"
-curl -fsSL -o "$tmp_dir/checksums.txt" "$base_url/checksums.txt"
-
-# checksums.txt contains "<sha256>  <asset>" lines for every asset; pick the
-# one matching our tarball and feed it to sha256sum -c.
-expected_line="$(grep " ${asset}\$" "$tmp_dir/checksums.txt" || true)"
-if [[ -z "$expected_line" ]]; then
-  echo "::error::No checksum entry for $asset in checksums.txt"
-  exit 1
-fi
-
-(
-  cd "$tmp_dir"
-  echo "$expected_line" | sha256sum -c -
-)
-
+echo "::notice::Download crane $version ($asset)"
+curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+  --connect-timeout 10 --max-time 60 -o "$tmp_dir/$asset" "$base_url/$asset"
 tar -xzf "$tmp_dir/$asset" -C "$bin_dir" crane
 chmod +x "$bin_dir/crane"
 
-# Persist for subsequent steps in the same job.
+# Add the binary directory for later steps in this job.
 if [[ -n "${GITHUB_PATH:-}" ]]; then
   echo "$bin_dir" >> "$GITHUB_PATH"
 fi

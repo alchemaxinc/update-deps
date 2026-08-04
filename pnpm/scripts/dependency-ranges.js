@@ -2,12 +2,11 @@
 'use strict';
 
 /**
- * Prints the declared dependency ranges of a package.json as JSON.
+ * Print declared dependency ranges from package.json as JSON.
  *
  * Usage: node dependency-ranges.js <package.json>
  *
- * Peer dependencies are intentionally omitted because `pnpm update` does
- * not modify them.
+ * Omit peer dependencies because `pnpm update` does not modify them.
  */
 
 const fs = require('fs');

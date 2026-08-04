@@ -8,30 +8,30 @@ from update_actions.updater import update_actions
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Update GitHub Action uses entries to latest releases."
+        description="Update GitHub Action uses entries to the latest releases."
     )
     parser.add_argument(
         "--root",
         default=os.environ.get("GITHUB_WORKSPACE", "."),
-        help="Repository root to scan (default: GITHUB_WORKSPACE or .)",
+        help="Repository root to scan. The default is GITHUB_WORKSPACE or .",
     )
     parser.add_argument(
         "--file-glob",
         default=".github/**/*.yml",
-        help="Glob (relative to root) for workflow files.",
+        help="Glob for workflow files, relative to the root.",
     )
     parser.add_argument(
         "--excluded-actions",
         default="",
         help=(
-            "Comma-separated list of action owners, repositories, or paths to "
-            "exclude. Values are matched literally, not as regex."
+            "Comma-separated action owners, repositories, or paths to exclude. "
+            "Values match literally, not as regular expressions."
         ),
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print planned updates without modifying files.",
+        help="Print planned updates. Do not modify files.",
     )
     return parser.parse_args()
 

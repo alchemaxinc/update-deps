@@ -13,38 +13,38 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--root",
         default=os.environ.get("GITHUB_WORKSPACE", "."),
-        help="Repository root to scan (default: GITHUB_WORKSPACE or .)",
+        help="Repository root to scan. The default is GITHUB_WORKSPACE or .",
     )
     parser.add_argument(
         "--dockerfile-glob",
         default="**/Dockerfile*",
-        help="Glob (relative to root) for Dockerfiles.",
+        help="Glob for Dockerfiles, relative to the root.",
     )
     parser.add_argument(
         "--compose-glob",
         default="**/docker-compose*.y*ml",
-        help="Glob (relative to root) for docker-compose files.",
+        help="Glob for docker-compose files, relative to the root.",
     )
     parser.add_argument(
         "--markdown-glob",
         default="",
         help=(
-            "Optional glob for markdown files to update with already-discovered "
-            "image refs. Empty disables markdown scanning."
+            "Optional glob for Markdown files with discovered image references. "
+            "An empty value disables Markdown scanning."
         ),
     )
     parser.add_argument(
         "--excluded-images",
         default="",
         help=(
-            "Comma-separated list of registries, registry/repos, or full "
-            "registry/repo:tag refs to exclude. Values are matched literally."
+            "Comma-separated registries, repositories, or complete image "
+            "references to exclude. Values match literally."
         ),
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print planned updates without modifying files.",
+        help="Print planned updates. Do not modify files.",
     )
     return parser.parse_args()
 

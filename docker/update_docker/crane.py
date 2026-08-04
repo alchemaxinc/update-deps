@@ -2,29 +2,40 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import time
 
 
 def crane_list(repo: str) -> list[str]:
-    """Return all tags for a fully-qualified repo via ``crane ls``.
+    """Return tags for a complete repository name with ``crane ls``.
 
-    On non-zero exit (network error, rate limit, missing repo) we log a
-    GitHub-Actions warning annotation and return an empty list, matching the
-    pattern used by ``actions/update_actions/github_api.py::fetch_release_tags``.
-    Crane must be on ``PATH``; the composite action installs it via
+    On a nonzero exit, log a GitHub Actions warning and return an empty list.
+    This matches ``actions/update_actions/github_api.py::fetch_release_tags``.
+    Crane must be on ``PATH``. The composite action installs it with
     ``scripts/install_crane.sh``.
     """
     cmd = ["crane", "ls", repo]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    except FileNotFoundError:
+    for attempt in range(3):
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, check=False, timeout=30
+            )
+        except FileNotFoundError:
+            print(
+                "::warning::crane binary is not on PATH. Skip tag lookup.",
+                file=sys.stderr,
+            )
+            return []
+        except subprocess.TimeoutExpired:
+            result = None
+
+        if result is not None and result.returncode == 0:
+            break
+        if attempt < 2:
+            time.sleep(2**attempt)
+    else:
+        detail = result.stderr.strip() if result is not None else "request timed out"
         print(
-            "::warning::crane binary not found on PATH; skipping tag lookup",
-            file=sys.stderr,
-        )
-        return []
-    if result.returncode != 0:
-        print(
-            f"::warning::Failed to list tags for {repo}: {result.stderr.strip()}",
+            f"::warning::Failed to list tags for {repo}: {detail}",
             file=sys.stderr,
         )
         return []

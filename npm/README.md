@@ -1,7 +1,7 @@
 # Update NPM Dependencies :package:
 
-This GitHub Action automatically updates NPM dependencies using `npm-check-updates` and creates a pull request with the
-changes.
+This GitHub Action updates NPM dependencies with `npm-check-updates`. It creates
+a pull request with the changes.
 
 ## :rocket: Usage
 
@@ -30,23 +30,23 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                   |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                    |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`     |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`     |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update NPM Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update NPM dependencies` |
-| `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                         |
-| `relock`            | Whether `package-lock.json` should be regenerated                                          | :x:                | `false`                   |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                         |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                   |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                   |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                   |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                   |
+| Input               | Description                                                 | Required           | Default                   |
+| ------------------- | ----------------------------------------------------------- | ------------------ | ------------------------- |
+| `base-branch`       | Base branch for the pull request                            | :white_check_mark: | `main`                    |
+| `token`             | GitHub token for authentication                             | :x:                | `${{ github.token }}`     |
+| `branch-prefix`     | Prefix for the update branch                                | :x:                | `update-dependencies`     |
+| `pr-title`          | Title of the pull request                                   | :x:                | `Update NPM Dependencies` |
+| `commit-message`    | Commit message for the update                               | :x:                | `Update NPM dependencies` |
+| `excluded-packages` | Comma-separated packages to exclude                         | :x:                | -                         |
+| `relock`            | Regenerate `package-lock.json`                              | :x:                | `false`                   |
+| `app-slug`          | GitHub App slug for commit attribution                      | :x:                | -                         |
+| `auto-merge`        | Enable automatic pull request merge                         | :x:                | `false`                   |
+| `merge-method`      | Merge method: `merge`, `squash`, or `rebase`                | :x:                | `merge`                   |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x:                | `false`                   |
+| `dry-run`           | Run without creating a pull request                         | :x:                | `false`                   |
 
 ## :warning: Prerequisites
 
-- Your repository must have a `package.json` file
-- Node.js version should be specified in `.nvmrc` file
-- The action requires write permissions to create branches and pull requests
+- Add a `package.json` file to the repository.
+- Specify the Node.js version in `.nvmrc`.
+- Give the action write permissions to create branches and pull requests.

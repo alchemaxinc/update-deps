@@ -67,6 +67,12 @@ class TestSelectLatestMatching(unittest.TestCase):
         tags = ["v1.42.0", "v1.42.1", "v1.43.0", "v2.0.0", "1.43.0"]
         self.assertEqual(versioning.select_latest_matching(tags, current), "v2.0.0")
 
+    def test_rejects_downgrades(self):
+        current = versioning.parse_image_tag("2.0")
+        self.assertIsNone(
+            versioning.select_latest_matching(["1.9", "1.8", "2.0"], current)
+        )
+
     def test_returns_none_when_no_match(self):
         current = versioning.parse_image_tag("1.94-alpine")
         self.assertIsNone(

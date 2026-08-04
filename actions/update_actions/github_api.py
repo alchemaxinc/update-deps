@@ -14,7 +14,7 @@ def fetch_release_tags(repo: str) -> list[str]:
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         print(
-            f"::warning::Failed to fetch releases for {repo}: {result.stderr.strip()}",
+            f"::warning::Release lookup failed for {repo}: {result.stderr.strip()}",
             file=sys.stderr,
         )
         return []

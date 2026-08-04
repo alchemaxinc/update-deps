@@ -6,9 +6,52 @@ import re
 import subprocess
 import sys
 
+EXCLUDED_DIRECTORIES = {".terraform", ".git", "terraform.tfstate.d"}
+
+
+def parse_version(version):
+    """Return a numeric SemVer tuple or None for unsupported versions."""
+    match = re.fullmatch(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?", version)
+    if not match:
+        return None
+    return tuple(int(part or 0) for part in match.groups())
+
+
+def update_constraint(constraint, latest):
+    """Return a policy-preserving update or None for an unsafe update.
+
+    Multi-clause constraints define an explicit range policy. Terraform selects
+    the newest allowed version when it refreshes the lock file. Do not rewrite
+    these constraints. Major updates require an explicit user change.
+    """
+    if "," in constraint:
+        return None
+
+    match = re.fullmatch(r"(\s*(?:~>|=)?\s*)(\d+(?:\.\d+){0,2})(\s*)", constraint)
+    if not match:
+        return None
+
+    prefix, current_text, suffix = match.groups()
+    current = parse_version(current_text)
+    latest_parsed = parse_version(latest)
+    if current is None or latest_parsed is None or latest_parsed[0] != current[0]:
+        return None
+
+    # Pessimistic constraints with three components allow only patch updates.
+    # Broader constraints allow updates in the current major version.
+    if prefix.strip().startswith("~>") and current_text.count(".") == 2:
+        if latest_parsed[:2] != current[:2]:
+            return None
+
+    precision = current_text.count(".") + 1
+    new_version = ".".join(str(part) for part in latest_parsed[:precision])
+    if new_version == current_text:
+        return None
+    return f"{prefix}{new_version}{suffix}"
+
 
 def main():
-    # Configure logging
+    # Configure logging.
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(levelname)s: %(message)s",
@@ -18,7 +61,7 @@ def main():
     working_dir = sys.argv[1] if len(sys.argv) > 1 else "."
     versions_file = sys.argv[2] if len(sys.argv) > 2 else None
 
-    # Check that working_dir exists and is a directory
+    # Make sure that working_dir exists and is a directory.
     if not os.path.isdir(working_dir):
         logging.error(
             "Working directory '%s' does not exist or is not a directory.",
@@ -26,19 +69,19 @@ def main():
         )
         sys.exit(1)
 
-    # Check that versions_file is provided
+    # Make sure that versions_file is set.
     if not versions_file:
         logging.error("Versions file path must be provided as the second argument.")
         sys.exit(1)
 
-    # Check that versions_file exists
+    # Make sure that versions_file exists.
     if not os.path.isfile(versions_file):
         logging.error(
             "Versions file '%s' does not exist or is not a file.", versions_file
         )
         sys.exit(1)
 
-    # Read current versions
+    # Read current versions.
     try:
         with open(versions_file, "r", encoding="utf-8") as f:
             current_data = json.load(f)
@@ -49,14 +92,14 @@ def main():
         logging.error("Error reading versions file '%s': %s", versions_file, e)
         sys.exit(1)
 
-    # Extract providers from current versions
+    # Get providers from the current versions.
     providers = {}
     if "provider_selections" not in current_data:
         logging.error("No providers found in current versions")
         sys.exit(1)
 
     for namespace, version in current_data["provider_selections"].items():
-        logging.debug("Processing provider '%s/%s'", namespace, version)
+        logging.debug("Provider '%s' has version '%s'", namespace, version)
 
         registry, name = namespace.split("/", 1)
         providers[namespace] = {
@@ -66,15 +109,15 @@ def main():
             "latest": None,
         }
 
-    # Get latest versions from Terraform registry
-    logging.info("Fetching latest provider versions...")
+    # Get the latest versions from the Terraform Registry.
+    logging.info("The action gets the latest provider versions.")
     for namespace, provider_info in providers.items():
         try:
             registry = provider_info["registry"]
             name = provider_info["name"]
             url = f"https://{registry}/v1/providers/{name}"
 
-            logging.debug("Fetching version info from %s", url)
+            logging.debug("The action gets version information from %s", url)
 
             result = subprocess.run(
                 ["curl", "-s", url],
@@ -105,9 +148,14 @@ def main():
         except Exception as e:  # pragma: no cover - defensive
             logging.error("Error fetching %s: %s", namespace, e)
 
-    # Update .tf files with new versions
+    # Update .tf files with new versions.
     tf_files = []
     for root, dirs, files in os.walk(working_dir):
+        # Terraform writes downloaded providers and copied modules below
+        # .terraform. These files are generated, not user configuration.
+        dirs[:] = [
+            directory for directory in dirs if directory not in EXCLUDED_DIRECTORIES
+        ]
         for file in files:
             if file.endswith(".tf"):
                 tf_files.append(os.path.join(root, file))
@@ -116,14 +164,16 @@ def main():
     all_updates = []
 
     for tf_file in tf_files:
-        # Initialize content to satisfy static analyzers in all code paths
+        # Initialize content for static analyzers in all code paths.
         content = ""
         with open(tf_file, "r", encoding="utf-8") as rf:
             content = rf.read()
 
-        # Skip files that don't have required_providers block
+        # Skip files without a required_providers block.
         if "required_providers" not in content:
-            logging.debug("Skipping %s - no required_providers block found", tf_file)
+            logging.debug(
+                "The action skips %s. No required_providers block exists.", tf_file
+            )
             continue
 
         original_content = content
@@ -132,48 +182,44 @@ def main():
             if not provider_info["latest"]:
                 continue
 
-            # Extract major.minor version from latest version (ignore patch)
             latest_version = provider_info["latest"]
-            version_parts = latest_version.split(".")
-            if len(version_parts) >= 2:
-                new_version_constraint = f"~> {version_parts[0]}.{version_parts[1]}"
-            else:
-                # Fallback if version format is unexpected
-                logging.warning(
-                    "Unexpected version format for %s: %s",
-                    namespace,
-                    latest_version,
-                )
-                new_version_constraint = f"~> {version_parts[0]}.0"
 
-            # The source in .tf files looks like "hashicorp/aws" (namespace/name)
-            # not the full path like "registry.terraform.io/hashicorp/aws"
-            # We need to extract just the last two parts
+            # The .tf source uses "hashicorp/aws", not the complete registry path.
             name = provider_info["name"]
 
-            # Pattern matches: source = "hashicorp/aws" followed by version = "..."
-            # We need to find the provider block and update its version line within that block
+            # Match source = "hashicorp/aws" followed by version = "...".
+            # Update the version line in this provider block.
             pattern = (
-                rf"(\b\w+\s*=\s*\{{\s*"  # provider_name = {
-                rf"[^}}]*source\s*=\s*[\"\']"
+                r"(\b\w+\s*=\s*\{\s*"  # provider_name = {
+                r"[^}]*source\s*=\s*[\"\']"
                 + re.escape(name)
                 + r"[\"\']"  # source = "registry/name"
-                rf"[^}}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
+                r"[^}]*version\s*=\s*[\"\'])([^\"\']+)([\"\'])"
             )
+
+            old_constraint_match = re.search(
+                pattern, content, flags=re.MULTILINE | re.DOTALL
+            )
+            if old_constraint_match is None:
+                logging.debug("No match found for %s in %s", name, tf_file)
+                continue
+
+            old_constraint = old_constraint_match.group(2)
+            new_version_constraint = update_constraint(old_constraint, latest_version)
+            if new_version_constraint is None:
+                logging.info(
+                    "Skipping %s in %s: %r does not permit a safe automatic update to %s",
+                    name,
+                    tf_file,
+                    old_constraint,
+                    latest_version,
+                )
+                continue
 
             replacement = f"\\g<1>{new_version_constraint}\\g<3>"
             new_content = re.sub(
                 pattern, replacement, content, flags=re.MULTILINE | re.DOTALL
             )
-
-            if new_content == content:
-                logging.debug("No match found for %s in %s", name, tf_file)
-                continue
-
-            old_constraint_match = re.search(
-                pattern, content, flags=re.MULTILINE | re.DOTALL
-            )
-            old_constraint = old_constraint_match.group(2)
             content = new_content
             all_updates.append(
                 {

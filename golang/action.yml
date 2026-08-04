@@ -10,8 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
-    default: 'main'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -20,42 +19,42 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update Golang Dependencies'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update Golang dependencies'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   strategy:
     required: false
-    description: 'Strategy for updating dependencies (controlled, direct, or everything)'
+    description: 'Dependency update strategy: controlled, direct, or everything'
     default: 'controlled'
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Test mode updates a pre-checked-out working tree. It does not check out or create a pull request.'
     default: 'false'
 
 runs:
@@ -171,11 +170,16 @@ runs:
           fi
         done <<< "$after"
 
-        {
-          echo "updates<<ENDOFUPDATES"
-          printf "%s" "$updates"
-          echo "ENDOFUPDATES"
-        } >> "$GITHUB_OUTPUT"
+        updates_json=$(printf "%s" "$updates" | python3 -c '
+        import json
+        import sys
+
+        json.dump(
+            [line.split("\t") for line in sys.stdin.read().splitlines() if line],
+            sys.stdout,
+        )
+        ')
+        echo "updates=$updates_json" >> "$GITHUB_OUTPUT"
 
     - name: Build PR description
       id: build_pr_body
@@ -186,10 +190,10 @@ runs:
         STRATEGY: ${{ inputs.strategy }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
-        updates_file="$RUNNER_TEMP/go-updates.tsv"
+        updates_file="$RUNNER_TEMP/go-updates.json"
         preface_file="$RUNNER_TEMP/go-pr-preface.md"
-        printf "%s\n" "$UPDATES" > "$updates_file"
-        echo "**Strategy Used:** \`$STRATEGY\`" > "$preface_file"
+        printf "%s" "$UPDATES" > "$updates_file"
+        echo "**Strategy:** \`$STRATEGY\`" > "$preface_file"
 
         python3 "$PR_BODY_SCRIPT" \
           --title "# Go Module Dependencies Update" \
@@ -216,7 +220,7 @@ runs:
         files: 'go.mod go.sum'
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'

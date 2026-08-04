@@ -11,9 +11,9 @@ _SUFFIX_ALLOWED = set(
 
 @dataclass(frozen=True)
 class TagVariant:
-    prefix: str  # "" or "v"
+    prefix: str  # "" or "v".
     numeric: tuple[int, ...]
-    suffix: str  # "" or e.g. "-alpine"
+    suffix: str  # "" or, for example, "-alpine".
 
     @property
     def version(self) -> semver.Version:
@@ -22,10 +22,10 @@ class TagVariant:
 
 
 def parse_image_tag(tag: str) -> TagVariant | None:
-    """Parse an image tag into prefix/numeric/suffix, or None if not numeric.
+    """Parse an image tag into prefix, numeric value, and suffix.
 
-    Tags such as ``latest``, ``nightly``, or ``edge`` return ``None`` so the
-    caller can skip them. The accepted shape is::
+    ``latest``, ``nightly``, and ``edge`` return ``None``. The caller skips
+    these tags. The accepted shape is::
 
         [v]<num>(.<num>){0,2}[-<alnum>[<alnum.->...]]
 
@@ -34,14 +34,14 @@ def parse_image_tag(tag: str) -> TagVariant | None:
     if not tag:
         return None
 
-    # A leading "v" is only a prefix when it precedes a digit. Otherwise it's
-    # part of a non-numeric tag like "vault" and the whole tag is rejected.
+    # A leading "v" is a prefix only before a digit. Otherwise it belongs to a
+    # nonnumeric tag such as "vault", and the function rejects the whole tag.
     if tag[0] == "v" and len(tag) > 1 and tag[1].isdigit():
         prefix, rest = "v", tag[1:]
     else:
         prefix, rest = "", tag
 
-    # Split numeric core from optional "-suffix" on the first dash.
+    # Split the numeric core from an optional "-suffix" at the first dash.
     numeric_part, sep, suffix_body = rest.partition("-")
     suffix = f"-{suffix_body}" if sep else ""
 
@@ -52,9 +52,8 @@ def parse_image_tag(tag: str) -> TagVariant | None:
     if not all(part.isdigit() for part in parts):
         return None
 
-    # Suffix body must start with an alphanumeric and only contain
-    # alphanumerics, "." or "-" (matches Docker tag conventions like
-    # "-alpine3.20" or "-slim-bookworm").
+    # The suffix must start with an alphanumeric. It can contain alphanumerics,
+    # "." or "-", as in "-alpine3.20" and "-slim-bookworm".
     if suffix:
         if not suffix_body or not suffix_body[0].isalnum():
             return None
@@ -70,11 +69,10 @@ def parse_image_tag(tag: str) -> TagVariant | None:
 
 
 def select_latest_matching(tags: list[str], current: TagVariant) -> str | None:
-    """Return the highest tag whose prefix and suffix match ``current``.
+    """Return the highest tag with the prefix and suffix of ``current``.
 
-    Tags that do not parse, or whose prefix/suffix differ from ``current``,
-    are ignored. This keeps ``rust:1.94-alpine`` from being bumped across
-    variants to ``rust:1.95-slim-bookworm``.
+    Ignore tags that do not parse or have a different prefix or suffix. This
+    prevents updates from ``rust:1.94-alpine`` to ``rust:1.95-slim-bookworm``.
     """
     best_tag: str | None = None
     best_version: semver.Version | None = None
@@ -88,6 +86,9 @@ def select_latest_matching(tags: list[str], current: TagVariant) -> str | None:
             continue
 
         version = variant.version
+        if version <= current.version:
+            continue
+
         if best_version is None or version > best_version:
             best_version = version
             best_tag = tag
@@ -96,10 +97,10 @@ def select_latest_matching(tags: list[str], current: TagVariant) -> str | None:
 
 
 def granularize_tag(current_tag: str, latest_tag: str) -> str:
-    """Render ``latest_tag`` at the same dot-depth as ``current_tag``.
+    """Render ``latest_tag`` at the dot depth of ``current_tag``.
 
-    ``1`` stays major-only, ``1.94`` stays minor-only, ``v1.42.1`` stays
-    patch-specific. The current tag's prefix/suffix are preserved.
+    ``1`` stays major-only. ``1.94`` stays minor-only. ``v1.42.1`` stays
+    patch-specific. Preserve the current tag prefix and suffix.
     """
     current = parse_image_tag(current_tag)
     latest = parse_image_tag(latest_tag)

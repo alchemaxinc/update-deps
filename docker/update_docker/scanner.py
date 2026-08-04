@@ -22,7 +22,7 @@ class ImageRef:
 
     @property
     def display(self) -> str:
-        # Re-render in canonical "registry/repo:tag" form for logs and PR rows.
+        # Render the canonical "registry/repo:tag" form for logs and pull request rows.
         if self.registry == "docker.io" and self.repo.startswith("library/"):
             return f"{self.repo[len('library/'):]}:{self.tag}"
 
@@ -43,8 +43,8 @@ class ImageRef:
         return f"{self.registry}/{self.repo}:{self.tag}"
 
 
-# Matches `FROM [--platform=...] <ref> [AS <alias>]`. The optional final group
-# captures the stage alias so we can skip later refs that point to it.
+# Match `FROM [--platform=...] <ref> [AS <alias>]`. The final optional group
+# captures the stage alias. The scanner skips later references to this alias.
 _FROM_RE = re.compile(
     r"^\s*FROM\s+(?:--platform=\S+\s+)?(?P<ref>\S+)(?:\s+AS\s+(?P<alias>\S+))?\s*$",
     re.IGNORECASE,
@@ -52,27 +52,27 @@ _FROM_RE = re.compile(
 
 
 def _split_image_ref(ref: str) -> tuple[str, str, str] | None:
-    """Split an image ref into (registry, repo, tag).
+    """Split an image reference into (registry, repository, tag).
 
-    Returns None for refs we cannot or should not handle: ``scratch``,
-    digest-only refs, or refs that lack a tag.
+    Return None for ``scratch``, digest-only references, or references without
+    a tag.
     """
     if ref == "scratch":
         return None
 
-    # Skip any digest-pinned ref (with or without tag) per design v1.
+    # Version 1 skips digest-pinned references with or without a tag.
     if "@sha256:" in ref or "@" in ref:
         return None
 
     if ":" not in ref.rsplit("/", 1)[-1]:
-        # No tag → can't bump it.
+        # A reference without a tag cannot be updated.
         return None
 
     name_part, tag = ref.rsplit(":", 1)
 
-    # A leading path segment is treated as a registry only when it looks like
-    # a hostname (contains ".", ":", or equals "localhost"). Otherwise it's a
-    # Docker Hub org name.
+    # Treat the leading path segment as a registry only when it resembles a
+    # hostname. It contains ".", ":", or equals "localhost". Otherwise it is a
+    # Docker Hub organization name.
     segments = name_part.split("/")
     if len(segments) == 1:
         registry = "docker.io"
@@ -88,16 +88,15 @@ def _split_image_ref(ref: str) -> tuple[str, str, str] | None:
 
 
 def scan_dockerfile(path: Path) -> list[ImageRef]:
-    """Return image refs from a Dockerfile, skipping stage aliases.
+    """Return image references from a Dockerfile without stage aliases.
 
-    Two-pass: first collect every ``AS <alias>`` token, then skip any later
-    ``FROM <token>`` whose token matches a previously-declared alias in the
-    same file.
+    First collect each ``AS <alias>`` token. Then skip a later ``FROM <token>``
+    when the token matches an alias in the same file.
     """
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
 
-    # First pass: collect stage aliases in declaration order.
+    # First, collect stage aliases in declaration order.
     aliases: list[str] = []
     parsed: list[tuple[int, str, str | None]] = []
     for idx, line in enumerate(lines, start=1):
@@ -112,7 +111,7 @@ def scan_dockerfile(path: Path) -> list[ImageRef]:
     refs: list[ImageRef] = []
     seen_aliases: set[str] = set()
     for line_no, ref, alias in parsed:
-        # Stage reference (e.g. FROM builder), not an image — skip.
+        # This stage reference, for example FROM builder, is not an image.
         if ref in seen_aliases:
             if alias:
                 seen_aliases.add(alias)
@@ -143,7 +142,7 @@ def scan_dockerfile(path: Path) -> list[ImageRef]:
 
 
 def _walk_compose(node, callback) -> None:
-    """Recursively visit every ``image:`` key in a compose mapping."""
+    """Visit each ``image:`` key in a compose mapping."""
     if isinstance(node, list):
         for item in node:
             _walk_compose(item, callback)
@@ -152,17 +151,19 @@ def _walk_compose(node, callback) -> None:
     if not isinstance(node, dict):
         return
 
-    if isinstance(node.get("image"), str):
-        callback(
-            node["image"], node.lc.data["image"][0] + 1 if hasattr(node, "lc") else 0
-        )
+    # ``dict.get`` includes values inherited through YAML merges. These values
+    # have no source location in the service. Update the explicit anchor instead.
+    if "image" in node and isinstance(node["image"], str):
+        key_position = node.lc.key("image")
+        if key_position is not None:
+            callback(node["image"], key_position[0] + 1)
 
     for value in node.values():
         _walk_compose(value, callback)
 
 
 def scan_compose(path: Path) -> list[ImageRef]:
-    """Return image refs from a docker-compose file."""
+    """Return image references from a docker-compose file."""
     text = path.read_text(encoding="utf-8")
     yaml = YAML()
     yaml.preserve_quotes = True
@@ -223,17 +224,16 @@ def scan_compose_files(root: Path, glob: str) -> list[ImageRef]:
 
 
 def _markdown_pattern(needle: str) -> re.Pattern[str]:
-    # Leading lookbehind rejects partial-word collisions like
-    # ``my-rust:1.94-alpine`` when updating ``rust:1.94-alpine``.
-    # Trailing lookahead rejects only continuations that could extend the
-    # tag itself (word chars or dashes); punctuation like ``.``, ``,``, or
-    # ``)`` is fine — the period at the end of a sentence must not block
-    # replacement.
+    # Leading lookbehind rejects partial matches, such as ``my-rust:1.94-alpine``
+    # when the action updates ``rust:1.94-alpine``.
+    # Trailing lookahead rejects only text that can extend the tag, such as
+    # word characters or dashes. Punctuation, such as ``.``, ``,``, and ``)``,
+    # does not block a replacement.
     return re.compile(rf"(?<![\w./-]){re.escape(needle)}(?![\w-])")
 
 
 def _ref_needles(ref: ImageRef) -> list[str]:
-    """Return the search forms used to match ``ref`` in markdown bodies."""
+    """Return search forms that match ``ref`` in Markdown text."""
     needles = [ref.display]
     if ref.full_ref not in needles:
         needles.append(ref.full_ref)
@@ -244,10 +244,10 @@ def _ref_needles(ref: ImageRef) -> list[str]:
 def find_markdown_occurrences(
     path: Path, candidates: list[ImageRef]
 ) -> Iterator[tuple[ImageRef, int]]:
-    """Yield (ref, line_number) for each markdown match of a known ref.
+    """Yield (reference, line_number) for each known Markdown reference.
 
-    Both ``registry/repo:tag`` and the bare ``repo:tag`` form (for Docker Hub
-    library images) are matched, with word-style boundaries.
+    Match ``registry/repo:tag`` and bare ``repo:tag`` forms for Docker Hub
+    library images. Use word-style boundaries.
     """
     text = path.read_text(encoding="utf-8")
     for ref in candidates:
@@ -257,7 +257,7 @@ def find_markdown_occurrences(
 
 
 def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
-    """Replace the tag on the matching ``FROM`` line, leaving the rest alone."""
+    """Replace the tag on the matching ``FROM`` line."""
     lines = text.splitlines(keepends=True)
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
@@ -278,26 +278,31 @@ def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
 
 
 def replace_compose_tag(text: str, ref: ImageRef, new_tag: str) -> str:
-    """Replace the tag on the compose ``image:`` line."""
+    """Replace the image scalar on the parser-identified ``image:`` line."""
     lines = text.splitlines(keepends=True)
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
         return text
 
     line = lines[target]
-    if f":{ref.tag}" not in line:
+    image_forms = sorted({ref.display, ref.full_ref}, key=len, reverse=True)
+    match = re.match(
+        rf"^(?P<prefix>\s*image\s*:\s*)(?P<quote>['\"]?)(?P<image>{'|'.join(re.escape(image) for image in image_forms)})(?P=quote)(?P<suffix>\s*(?:#.*)?(?:\r?\n)?)$",
+        line,
+    )
+    if match is None:
         return text
 
-    # Replace the last colon-tag occurrence on the line so registry ports
-    # (e.g. ``localhost:5000/...``) aren't rewritten by accident.
-    suffix = f":{ref.tag}"
-    idx = line.rfind(suffix)
-    lines[target] = line[:idx] + f":{new_tag}" + line[idx + len(suffix) :]
+    new_image = match.group("image")[: -len(ref.tag)] + new_tag
+    lines[target] = (
+        f"{match.group('prefix')}{match.group('quote')}{new_image}"
+        f"{match.group('quote')}{match.group('suffix')}"
+    )
     return "".join(lines)
 
 
 def replace_markdown_occurrences(text: str, ref: ImageRef, new_tag: str) -> str:
-    """Replace every word-bounded occurrence of the ref's display form."""
+    """Replace each word-bounded occurrence of the reference display form."""
     for needle in _ref_needles(ref):
         replacement = needle[: -len(ref.tag)] + new_tag
         text = _markdown_pattern(needle).sub(replacement, text)

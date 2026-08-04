@@ -7,7 +7,7 @@ from update_actions import scanner
 
 class TestScanner(unittest.TestCase):
     def test_get_granularity(self):
-        """Test granularity detection for various version formats."""
+        """Test granularity detection for version formats."""
         test_cases = [
             # (version, expected_granularity)
             ("1", "major"),
@@ -22,7 +22,7 @@ class TestScanner(unittest.TestCase):
             ("2.5.8", "patch"),
             ("v1.2.3", "patch"),
             ("v3.14.159", "patch"),
-            ("1.2.3.4", "patch"),  # More than 3 parts
+            ("1.2.3.4", "patch"),  # More than three parts.
             ("v1.2.3.4", "patch"),
         ]
 
@@ -99,6 +99,18 @@ class TestScanner(unittest.TestCase):
         )
         self.assertIn("uses: 'actions/checkout@v4'", updated)
 
+    def test_apply_updates_skips_heredoc_content(self):
+        text = """jobs:
+  build:
+    steps:
+      - run: |
+          echo "uses: actions/checkout@v3"
+      - uses: actions/checkout@v3
+"""
+        updated = scanner.apply_updates(text, {("actions/checkout", "v3"): "v4"})
+        self.assertIn('echo "uses: actions/checkout@v3"', updated)
+        self.assertIn("- uses: actions/checkout@v4", updated)
+
     def test_collect_workflow_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -111,8 +123,8 @@ class TestScanner(unittest.TestCase):
 
     def test_apply_updates_preserves_non_uses_variables(self):
         """
-        Regression test: Ensure that non-'uses' variables and multi-line env vars
-        are not modified when updating action versions.
+        Regression test: Make sure that non-'uses' variables and multi-line
+        environment variables are not changed during action version updates.
 
         This tests the issue where LOCAL_VERSION and LATEST_VERSION environment
         variables were being incorrectly split across multiple lines.
@@ -159,7 +171,7 @@ jobs:
           echo "Latest version: $LATEST_VERSION"
 """
 
-        # Upgrade specific actions to new versions
+        # Update selected actions to new versions.
         upgrades = {
             ("actions/create-github-app-token", "v1"): "v2.2.1",
             ("actions/setup-python", "v5"): "v6.2.0",
@@ -167,11 +179,11 @@ jobs:
 
         updated = scanner.apply_updates(text, upgrades)
 
-        # Verify that the uses entries were updated
+        # Make sure that the uses entries are updated.
         self.assertIn("actions/create-github-app-token@v2", updated)
         self.assertIn("actions/setup-python@v6", updated)
 
-        # Verify that non-uses variables are preserved exactly as-is
+        # Make sure that non-uses variables are preserved exactly.
         self.assertIn('PYTHON_VERSION: "3.14"', updated)
         self.assertIn(
             "LOCAL_VERSION: ${{ needs.get-current-local-version.outputs.local_version }}",
@@ -182,11 +194,11 @@ jobs:
             updated,
         )
 
-        # Verify that the run command is not split across lines
+        # Make sure that the run command stays on one line.
         self.assertIn('run: |\n          echo "Local version: $LOCAL_VERSION"', updated)
         self.assertIn('echo "Latest version: $LATEST_VERSION"', updated)
 
-        # Verify that other comments and structure are preserved
+        # Make sure that other comments and structure are preserved.
         self.assertIn('cron: "0 0 * * *"', updated)
 
 

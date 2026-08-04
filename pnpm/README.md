@@ -1,7 +1,7 @@
 # Update pnpm Dependencies :package:
 
-This GitHub Action automatically updates pnpm dependencies using `pnpm update --latest` and creates a pull request with
-the changes.
+This GitHub Action updates pnpm dependencies with `pnpm update --latest`. It
+creates a pull request with the changes.
 
 ## :rocket: Usage
 
@@ -30,35 +30,37 @@ jobs:
 
 ## :gear: Inputs
 
-| Input               | Description                                                                                | Required           | Default                    |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------ | -------------------------- |
-| `base-branch`       | Base branch for the pull request                                                           | :white_check_mark: | `main`                     |
-| `token`             | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`      |
-| `branch-prefix`     | Prefix for the update branch                                                               | :x:                | `update-dependencies`      |
-| `pr-title`          | Title for the pull request                                                                 | :x:                | `Update pnpm Dependencies` |
-| `commit-message`    | Commit message for the update                                                              | :x:                | `Update pnpm dependencies` |
-| `excluded-packages` | Comma-separated list of packages to exclude                                                | :x:                | -                          |
-| `relock`            | Whether `pnpm-lock.yaml` should be refreshed                                               | :x:                | `false`                    |
-| `app-slug`          | GitHub App slug for commit attribution                                                     | :x:                | -                          |
-| `auto-merge`        | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                    |
-| `merge-method`      | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                    |
-| `skip-if-pr-exists` | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                    |
-| `dry-run`           | Run without creating a PR                                                                  | :x:                | `false`                    |
+| Input               | Description                                                 | Required           | Default                    |
+| ------------------- | ----------------------------------------------------------- | ------------------ | -------------------------- |
+| `base-branch`       | Base branch for the pull request                            | :white_check_mark: | `main`                     |
+| `token`             | GitHub token for authentication                             | :x:                | `${{ github.token }}`      |
+| `branch-prefix`     | Prefix for the update branch                                | :x:                | `update-dependencies`      |
+| `pr-title`          | Title of the pull request                                   | :x:                | `Update pnpm Dependencies` |
+| `commit-message`    | Commit message for the update                               | :x:                | `Update pnpm dependencies` |
+| `excluded-packages` | Comma-separated packages to exclude                         | :x:                | -                          |
+| `relock`            | Regenerate `pnpm-lock.yaml`                                 | :x:                | `false`                    |
+| `app-slug`          | GitHub App slug for commit attribution                      | :x:                | -                          |
+| `auto-merge`        | Enable automatic pull request merge                         | :x:                | `false`                    |
+| `merge-method`      | Merge method: `merge`, `squash`, or `rebase`                | :x:                | `merge`                    |
+| `skip-if-pr-exists` | Skip a new pull request when one with the same title exists | :x:                | `false`                    |
+| `dry-run`           | Run without creating a pull request                         | :x:                | `false`                    |
 
 ## :warning: Prerequisites
 
-- Your repository must have a `package.json` file and a `pnpm-lock.yaml` lockfile
-- Node.js version should be specified in `.nvmrc` file
-- The pnpm version can be pinned via the `packageManager` field in `package.json` (read by `pnpm/action-setup`)
-- The action requires write permissions to create branches and pull requests
+- Add `package.json` and a `pnpm-lock.yaml` lockfile to the repository.
+- Specify the Node.js version in `.nvmrc`.
+- You can pin the pnpm version in the `packageManager` field of `package.json`.
+  `pnpm/action-setup` reads this field.
+- Give the action write permissions to create branches and pull requests.
 
 ## :information_source: Behavior Notes
 
-Because updates are applied by pnpm itself rather than by an external tool, keep the following in mind:
+pnpm applies these updates. Note these effects:
 
-- `catalog:` entries in `pnpm-workspace.yaml` are updated as well, and the file is included in the pull request when it
-  exists
-- On the first run, pnpm rewrites `package.json` with the dependency keys sorted alphabetically
-- A `"*"` range is replaced by a concrete caret range (for example `^1.3.0`)
-- `excluded-packages` entries are passed to pnpm as negation patterns (`!<package>`). Plain package names behave as
-  before; pnpm additionally supports glob patterns such as `@scope/*`
+- The action updates `catalog:` entries in `pnpm-workspace.yaml`. It includes
+  this file in the pull request when the file exists.
+- On the first run, pnpm sorts the dependency keys in `package.json`.
+- pnpm replaces a `"*"` range with a caret range, for example `^1.3.0`.
+- The action passes `excluded-packages` entries to pnpm as negation patterns
+  (`!<package>`). Plain package names work. pnpm also supports glob patterns
+  such as `@scope/*`.

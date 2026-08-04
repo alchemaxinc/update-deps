@@ -1,3 +1,4 @@
+import subprocess
 import unittest
 from unittest import mock
 
@@ -17,6 +18,7 @@ class TestCraneList(unittest.TestCase):
             capture_output=True,
             text=True,
             check=False,
+            timeout=30,
         )
         self.assertEqual(tags, ["1.0", "1.1", "latest"])
 
@@ -26,7 +28,19 @@ class TestCraneList(unittest.TestCase):
         completed.stdout = ""
         completed.stderr = "boom"
         with mock.patch("subprocess.run", return_value=completed):
-            self.assertEqual(crane.crane_list("library/rust"), [])
+            with mock.patch("update_docker.crane.time.sleep"):
+                self.assertEqual(crane.crane_list("library/rust"), [])
+
+    def test_retries_timeout(self):
+        completed = mock.Mock(returncode=0, stdout="1.0\n", stderr="")
+        with mock.patch(
+            "subprocess.run",
+            side_effect=[subprocess.TimeoutExpired(["crane"], 30), completed],
+        ) as run:
+            with mock.patch("update_docker.crane.time.sleep") as sleep:
+                self.assertEqual(crane.crane_list("library/rust"), ["1.0"])
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(1)
 
     def test_returns_empty_when_crane_missing(self):
         with mock.patch("subprocess.run", side_effect=FileNotFoundError()):

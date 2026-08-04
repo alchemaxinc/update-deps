@@ -1,6 +1,6 @@
 name: 'Update Docker Images'
 
-description: 'Update Docker image references in Dockerfiles, docker-compose, and (optionally) markdown to the latest matching tag.'
+description: 'Update Docker image references in Dockerfiles, docker-compose files, and optional Markdown files to the latest matching tag.'
 
 inputs:
   token:
@@ -10,8 +10,7 @@ inputs:
 
   base-branch:
     required: true
-    description: 'Base branch for PR'
-    default: 'main'
+    description: 'Base branch for the pull request'
 
   branch-prefix:
     required: false
@@ -20,67 +19,67 @@ inputs:
 
   pr-title:
     required: false
-    description: 'Title for the pull request'
+    description: 'Title of the pull request'
     default: 'Update Docker Images'
 
   commit-message:
     required: false
-    description: 'The commit message for the update'
+    description: 'Commit message for the update'
     default: 'Update Docker images'
 
   dockerfile-glob:
     required: false
-    description: 'Glob (relative to repo root) for Dockerfiles to scan'
+    description: 'Glob for Dockerfiles to scan, relative to the repository root'
     default: '**/Dockerfile*'
 
   compose-glob:
     required: false
-    description: 'Glob (relative to repo root) for docker-compose files'
-    default: '**/docker-compose*.y*ml'
+    description: 'Glob for docker-compose files to scan, relative to the repository root'
+    default: '**/*compose*.y*ml'
 
   markdown-glob:
     required: false
-    description: 'Optional glob for markdown files. Empty disables markdown updates.'
+    description: 'Optional glob for Markdown files. An empty value disables Markdown updates.'
     default: ''
 
   excluded-images:
     required: false
-    description: 'Comma-separated literal registry, registry/repo, or registry/repo:tag values to exclude.'
+    description: 'Comma-separated registry, repository, or tag values to exclude. Values are literal.'
     default: ''
 
   crane-version:
     required: false
-    description: 'Pinned google/go-containerregistry release used to install crane'
+    description: 'Pinned google/go-containerregistry release for crane'
     default: 'v0.21.5'
 
   check-files:
     required: false
-    description: 'Path/glob used to detect and include changed files in the PR'
+    description: 'Path or glob for changed files in the pull request'
     default: '.'
 
   app-slug:
     required: false
-    description: 'GitHub App slug for commit attribution (e.g., my-app). If provided, configures git as the app bot'
+    description: 'GitHub App slug for commit attribution. When set, Git uses the app bot identity.'
     default: ''
 
   auto-merge:
     required: false
-    description: 'Whether a successful PR should be automatically merged'
+    description: 'Enable automatic merge for a successful pull request'
     default: 'false'
 
   merge-method:
     required: false
-    description: 'Merge method to use when auto-merging the PR. Must be one of: merge, squash, rebase. Used when auto-merge is enabled.'
+    description: 'Merge method for automatic merging. Use merge, squash, or rebase.'
     default: 'merge'
 
   skip-if-pr-exists:
     required: false
-    description: 'Skip creating a new PR if an open PR with the same title already exists on the base branch'
+    description: 'Do not create a pull request when an open pull request with this title exists on the base branch.'
     default: 'false'
 
   dry-run:
     required: false
-    description: 'Run without creating a PR (for testing purposes)'
+    description: 'Print planned updates. Do not modify files or create a pull request.'
     default: 'false'
 
 runs:
@@ -114,7 +113,7 @@ runs:
         PYTHON_VERSION: '3.14'
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        cache-dependency-path: ${{ github.action_path }}/requirements.txt
+        cache: pip
 
     - name: Install dependencies
       if: steps.check_existing_pr.outputs.exists != 'true'
@@ -147,7 +146,8 @@ runs:
           --dockerfile-glob "${{ inputs.dockerfile-glob }}" \
           --compose-glob "${{ inputs.compose-glob }}" \
           --markdown-glob "${{ inputs.markdown-glob }}" \
-          --excluded-images "${{ inputs.excluded-images }}"
+          --excluded-images "${{ inputs.excluded-images }}" \
+          ${{ inputs.dry-run == 'true' && '--dry-run' || '' }}
 
     - name: Build PR description
       id: build_pr_body
@@ -157,8 +157,16 @@ runs:
         DOCKER_UPDATES: ${{ steps.update_docker.outputs.docker_updates }}
         PR_BODY_SCRIPT: ${{ github.action_path }}/../shared/build_update_pr_body.py
       run: |
-        updates_file="$RUNNER_TEMP/docker-updates.tsv"
-        printf "%s\n" "$DOCKER_UPDATES" > "$updates_file"
+        updates_file="$RUNNER_TEMP/docker-updates.json"
+        printf "%s" "$DOCKER_UPDATES" | python3 -c '
+        import json
+        import sys
+
+        json.dump(
+            [line.split("\t") for line in sys.stdin.read().splitlines() if line],
+            sys.stdout,
+        )
+        ' > "$updates_file"
 
         python3 "$PR_BODY_SCRIPT" \
           --title "# Docker Image Updates" \
@@ -184,7 +192,7 @@ runs:
         files: ${{ inputs.check-files }}
         commit-message: ${{ inputs.commit-message }}
         pr-title: ${{ inputs.pr-title }}
-        pr-body: ${{ steps.build_pr_body.outputs.pr_body }}
+        pr-body: ${{ fromJSON(steps.build_pr_body.outputs.pr_body) }}
 
     - name: Auto-merge Pull Request
       if: inputs.dry-run != 'true' && inputs.auto-merge == 'true' && steps.open-pr.outcome == 'success' && steps.check_existing_pr.outputs.exists != 'true'

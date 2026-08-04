@@ -20,40 +20,45 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      SEMANTIC_RELEASE_VERSION: '25.0.8'
+      SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION: '13.0.1'
+      SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION: '14.1.1'
+      SEMANTIC_RELEASE_NPM_VERSION: '13.1.5'
+      SEMANTIC_RELEASE_GITHUB_VERSION: '12.0.9'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: false
 
-      - name: Get current year and month for caching
-        id: date
-        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.10.0'
 
-      - name: Cache semantic-release tools
+      - name: Cache release tooling
         id: cache-semantic-release
         uses: actions/cache@v6
         with:
           path: ~/.npm-semantic-release
-          key: npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
-          restore-keys: |
-            npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
-            npm-semantic-release-${{ runner.os }}-
+          key: semantic-release-${{ runner.os }}-${{ env.SEMANTIC_RELEASE_VERSION }}-${{ env.SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION }}-${{ env.SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION }}-${{ env.SEMANTIC_RELEASE_NPM_VERSION }}-${{ env.SEMANTIC_RELEASE_GITHUB_VERSION }}
 
-      - name: Install semantic-release and plugins
+      - name: Install release tooling
         if: steps.cache-semantic-release.outputs.cache-hit != 'true'
         run: |
-          npm config set prefix ~/.npm-semantic-release
-          npm install -g \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/npm \
-            @semantic-release/github
+          npm install --global --prefix "$HOME/.npm-semantic-release" --ignore-scripts \
+            semantic-release@${{ env.SEMANTIC_RELEASE_VERSION }} \
+            @semantic-release/commit-analyzer@${{ env.SEMANTIC_RELEASE_COMMIT_ANALYZER_VERSION }} \
+            @semantic-release/release-notes-generator@${{ env.SEMANTIC_RELEASE_RELEASE_NOTES_GENERATOR_VERSION }} \
+            @semantic-release/npm@${{ env.SEMANTIC_RELEASE_NPM_VERSION }} \
+            @semantic-release/github@${{ env.SEMANTIC_RELEASE_GITHUB_VERSION }}
 
-      - name: Add semantic-release to PATH
-        run: echo "$HOME/.npm-semantic-release/bin" >> $GITHUB_PATH
+      - name: Add release tooling to PATH
+        run: echo "$HOME/.npm-semantic-release/bin" >> "$GITHUB_PATH"
 
       - name: Run semantic-release
         env:
@@ -81,7 +86,7 @@ jobs:
         run: |
           git fetch --tags
           latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "tag=$latest_tag" >> "$GITHUB_OUTPUT"
 
       - name: Is tag semantic?
         id: is-tag-semantic
@@ -89,28 +94,28 @@ jobs:
         run: |
           TAG="${{ steps.latest-tag.outputs.tag }}"
 
-          # Skip if tag doesn't match semantic version pattern
-          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::debug::Tag $TAG doesn't match semantic version pattern, skipping moving tags"
-            echo "semantic=false" >> $GITHUB_OUTPUT
+          # Skip the tag if it does not match the semantic version pattern.
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::debug::Tag $TAG does not match the semantic version pattern. Skip moving tags."
+            echo "semantic=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo "semantic=true" >> $GITHUB_OUTPUT
-          echo "semantic-tag=$TAG" >> $GITHUB_OUTPUT
+          echo "semantic=true" >> "$GITHUB_OUTPUT"
+          echo "semantic-tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Extract version tag
         id: major-minor-tags
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         run: |
           TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          VERSION=${TAG#v}
+          VERSION="${TAG#v}"
           IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
-          MAJOR=${VERSION_PARTS[0]}
-          MINOR=${VERSION_PARTS[1]}
-          echo "::debug::Extracted version parts -> MAJOR=$MAJOR, MINOR=$MINOR from TAG=$TAG"
-          echo "major=$MAJOR" >> $GITHUB_OUTPUT
-          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          echo "::debug::Tag $TAG has MAJOR=$MAJOR and MINOR=$MINOR"
+          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+          echo "minor=$MINOR" >> "$GITHUB_OUTPUT"
 
       - name: Push major tag
         id: push-major
@@ -121,7 +126,7 @@ jobs:
           TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
           MAJOR="${{ steps.major-minor-tags.outputs.major }}"
           MAJOR_TAG="v$MAJOR"
-          echo "::debug::Creating/updating tag $MAJOR_TAG to point to $TAG"
+          echo "::debug::The action points tag $MAJOR_TAG to $TAG"
           git tag -f "$MAJOR_TAG" "$TAG"
           git push origin "$MAJOR_TAG" --force
 
@@ -135,6 +140,6 @@ jobs:
           MAJOR="${{ steps.major-minor-tags.outputs.major }}"
           MINOR="${{ steps.major-minor-tags.outputs.minor }}"
           MINOR_TAG="v$MAJOR.$MINOR"
-          echo "::debug::Creating/updating tag $MINOR_TAG to point to $TAG"
+          echo "::debug::The action points tag $MINOR_TAG to $TAG"
           git tag -f "$MINOR_TAG" "$TAG"
           git push origin "$MINOR_TAG" --force

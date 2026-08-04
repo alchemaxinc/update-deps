@@ -28,7 +28,7 @@ def _is_excluded(ref: ImageRef, excluded: set[str]) -> bool:
     full = f"{ref.registry}/{ref.repo}:{ref.tag}"
     candidates = {ref.registry, f"{ref.registry}/{ref.repo}", full}
     if ref.registry == "docker.io":
-        # Allow excludes written without the implicit registry/library prefix.
+        # Allow exclusions without the implicit registry or library prefix.
         repo_short = (
             ref.repo[len("library/") :] if ref.repo.startswith("library/") else ref.repo
         )
@@ -60,8 +60,8 @@ def update_docker(
         print("No Docker image references found.")
         return 0
 
-    # Cache crane lookups: identical (registry, repo) pairs need to hit the
-    # registry only once per run.
+    # Cache crane lookups. Each (registry, repository) pair uses the registry
+    # only once per run.
     tag_cache: dict[str, list[str]] = {}
     new_tag_for: dict[tuple[str, str, str], str] = {}
     update_records: list[tuple[ImageRef, str]] = []
@@ -75,7 +75,7 @@ def update_docker(
         else:
             current = parse_image_tag(ref.tag)
             if current is None:
-                print(f"::notice::Skipping {ref.display} (unsupported tag format)")
+                print(f"::notice::Skip {ref.display}. The tag format is not supported.")
                 seen_decision[key] = None
                 continue
 
@@ -103,8 +103,8 @@ def update_docker(
 
         update_records.append((ref, new_tag))
 
-    # Group writes per file so each file is read/written at most once even
-    # when multiple refs share a path.
+    # Group writes by file. Read and write each file at most once when multiple
+    # references have the same path.
     by_file: dict[Path, list[tuple[ImageRef, str]]] = defaultdict(list)
     for ref, new_tag in update_records:
         by_file[ref.source_path].append((ref, new_tag))
@@ -113,8 +113,8 @@ def update_docker(
     for path, items in by_file.items():
         original = path.read_text(encoding="utf-8")
         updated = original
-        # Replace from bottom of file upward so dockerfile/compose line
-        # numbers stay stable across edits.
+        # Replace from the file end. Dockerfile and compose line numbers stay
+        # stable across changes.
         for ref, new_tag in sorted(
             items, key=lambda item: item[0].line_number, reverse=True
         ):
@@ -130,9 +130,8 @@ def update_docker(
                 path.write_text(updated, encoding="utf-8")
                 print(f"Updated {path}")
 
-    # Markdown is opt-in: only run when a glob is configured. Markdown gets
-    # all of the unique (ref, new_tag) pairs we already decided on so callers
-    # don't lose updates that happen only in docs.
+    # Markdown updates require a glob. Markdown receives each unique
+    # (reference, new tag) pair so documentation-only updates are kept.
     if markdown_glob:
         unique_updates: dict[tuple[str, str, str], tuple[ImageRef, str]] = {}
         for ref, new_tag in update_records:

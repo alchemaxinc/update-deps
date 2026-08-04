@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
-    branches-ignore:
+    branches:
       - main
+  pull_request:
   workflow_call:
 
 concurrency:
@@ -17,6 +18,9 @@ env:
   PYTHON_VERSION: '3.14'
   CSPELL_VERSION: '8.0.0'
   BLACK_VERSION: '24.10.0'
+  RUFF_VERSION: '0.12.7'
+  ACTIONLINT_VERSION: '1.7.12'
+  SHELLCHECK_VERSION: '0.10.0'
   PRETTIER_VERSION: '3.3.3'
   COMMITLINT_CLI_VERSION: '20.2.0'
 
@@ -98,14 +102,116 @@ jobs:
         uses: actions/cache@v6
         id: cache-black
         with:
-          path: ~/.cache/pip
-          key: v1-black-${{ env.BLACK_VERSION }}
+          path: ~/.cache/ci-tools/black/${{ env.BLACK_VERSION }}
+          key: v1-black-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}-${{ env.BLACK_VERSION }}
 
       - name: Install Black
-        run: pip install black==${{ env.BLACK_VERSION }}
+        if: steps.cache-black.outputs.cache-hit != 'true'
+        run: |
+          BLACK_HOME="$HOME/.cache/ci-tools/black/${{ env.BLACK_VERSION }}"
+          python -m venv "$BLACK_HOME"
+          "$BLACK_HOME/bin/pip" install black==${{ env.BLACK_VERSION }}
+
+      - name: Add Black to PATH
+        run: echo "$HOME/.cache/ci-tools/black/${{ env.BLACK_VERSION }}/bin" >> "$GITHUB_PATH"
 
       - name: Run Black check
         run: black --check .
+
+  run-ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '${{ env.PYTHON_VERSION }}'
+
+      - name: Cache Ruff
+        uses: actions/cache@v6
+        id: cache-ruff
+        with:
+          path: ~/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}
+          key: v1-ruff-${{ runner.os }}-${{ runner.arch }}-py${{ env.PYTHON_VERSION }}-${{ env.RUFF_VERSION }}
+
+      - name: Install Ruff
+        if: steps.cache-ruff.outputs.cache-hit != 'true'
+        run: |
+          RUFF_HOME="$HOME/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}"
+          python -m venv "$RUFF_HOME"
+          "$RUFF_HOME/bin/pip" install ruff==${{ env.RUFF_VERSION }}
+
+      - name: Add Ruff to PATH
+        run: echo "$HOME/.cache/ci-tools/ruff/${{ env.RUFF_VERSION }}/bin" >> "$GITHUB_PATH"
+
+      - name: Run Ruff correctness checks
+        run: ruff check .
+
+  run-actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Cache Actionlint
+        id: cache-actionlint
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ci-tools/actionlint/${{ env.ACTIONLINT_VERSION }}
+          key: v1-actionlint-${{ runner.os }}-${{ runner.arch }}-${{ env.ACTIONLINT_VERSION }}
+
+      - name: Install Actionlint
+        if: steps.cache-actionlint.outputs.cache-hit != 'true'
+        env:
+          VERSION: ${{ env.ACTIONLINT_VERSION }}
+        run: |
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          install_dir="$HOME/.cache/ci-tools/actionlint/$VERSION"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz" \
+            --output "$archive"
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" actionlint
+
+      - name: Add Actionlint to PATH
+        run: echo "$HOME/.cache/ci-tools/actionlint/${{ env.ACTIONLINT_VERSION }}" >> "$GITHUB_PATH"
+
+      - name: Run Actionlint
+        run: |
+          actionlint -color \
+            -ignore 'element of "steps" section is alias node' \
+            -ignore 'step must run script with "run" section or run action with "uses" section'
+
+  run-shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - *checkout-code
+
+      - name: Cache ShellCheck
+        id: cache-shellcheck
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ci-tools/shellcheck/${{ env.SHELLCHECK_VERSION }}
+          key: v1-shellcheck-${{ runner.os }}-${{ runner.arch }}-${{ env.SHELLCHECK_VERSION }}
+
+      - name: Install ShellCheck
+        if: steps.cache-shellcheck.outputs.cache-hit != 'true'
+        env:
+          VERSION: ${{ env.SHELLCHECK_VERSION }}
+        run: |
+          archive="$RUNNER_TEMP/shellcheck.tar.xz"
+          install_dir="$HOME/.cache/ci-tools/shellcheck/$VERSION"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://github.com/koalaman/shellcheck/releases/download/v${VERSION}/shellcheck-v${VERSION}.linux.x86_64.tar.xz" \
+            --output "$archive"
+          mkdir -p "$install_dir"
+          tar -xJf "$archive" -C "$install_dir" --strip-components=1
+
+      - name: Add ShellCheck to PATH
+        run: echo "$HOME/.cache/ci-tools/shellcheck/${{ env.SHELLCHECK_VERSION }}" >> "$GITHUB_PATH"
+
+      - name: Run ShellCheck
+        run: git ls-files '*.sh' | xargs --no-run-if-empty shellcheck
 
   install-cspell:
     runs-on: ubuntu-latest
@@ -122,7 +228,7 @@ jobs:
 
       - name: Install CSpell
         if: steps.cache-cspell.outputs.cache-hit != 'true'
-        run: npm i -D cspell
+        run: npm i -D cspell@${{ env.CSPELL_VERSION }}
 
   run-cspell:
     runs-on: ubuntu-latest
@@ -162,6 +268,10 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            actions/requirements.txt
+            docker/requirements.txt
 
       - name: Install dependencies
         if: matrix.has-requirements
@@ -184,7 +294,11 @@ jobs:
         uses: ./actions
         with:
           dry-run: 'true'
+          base-branch: main
           file-glob: 'actions/test/.github/**/*.yml'
+
+      - name: Verify action fixture
+        run: bash actions/test/verify-dry-run.sh
 
   test-circleci-orbs:
     name: Test CircleCI Orbs Updater
@@ -192,11 +306,19 @@ jobs:
     steps:
       - *checkout-code
 
+      - name: Test CircleCI orb action configuration
+        working-directory: circleci-orbs
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
       - name: Test CircleCI orbs updater
         uses: ./circleci-orbs
         with:
           dry-run: 'true'
+          base-branch: main
           circleci-config-file: 'circleci-orbs/test/.circleci/config.yml'
+
+      - name: Verify CircleCI fixture
+        run: bash circleci-orbs/test/verify-dry-run.sh
 
   test-golang:
     name: Test Go Dependencies Updater
@@ -213,10 +335,16 @@ jobs:
         uses: ./golang
         with:
           dry-run: 'true'
+          base-branch: main
+
+      - name: Verify Go fixture
+        run: bash golang/test/verify-update.sh
 
   test-npm:
     name: Test NPM Dependencies Updater
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - *checkout-code
 
@@ -230,6 +358,10 @@ jobs:
         uses: ./npm
         with:
           dry-run: 'true'
+          base-branch: main
+
+      - name: Verify NPM fixture
+        run: bash npm/test/verify-update.sh
 
   test-pnpm:
     name: Test pnpm Dependencies Updater
@@ -247,6 +379,10 @@ jobs:
         uses: ./pnpm
         with:
           dry-run: 'true'
+          base-branch: main
+
+      - name: Verify pnpm fixture
+        run: bash pnpm/test/verify-update.sh
 
   test-cargo:
     name: Test Cargo Dependencies Updater
@@ -263,6 +399,10 @@ jobs:
         uses: ./cargo
         with:
           dry-run: 'true'
+          base-branch: main
+
+      - name: Verify Cargo fixture
+        run: bash cargo/test/verify-update.sh
 
   test-terraform:
     name: Test Terraform Dependencies Updater
@@ -274,8 +414,12 @@ jobs:
         uses: ./terraform
         with:
           dry-run: 'true'
+          base-branch: main
           working-dir: 'terraform/test'
           var-file-path: 'test.tfvars'
+
+      - name: Verify Terraform fixture
+        run: bash terraform/test/verify-update.sh
 
   test-docker:
     name: Test Docker Images Updater
@@ -292,6 +436,10 @@ jobs:
         uses: ./docker
         with:
           dry-run: 'true'
+          base-branch: main
+
+      - name: Verify Docker fixture
+        run: bash docker/test/verify-dry-run.sh
 
   ci-passed:
     name: CI Passed
@@ -301,6 +449,9 @@ jobs:
       - run-commitlint
       - run-prettier
       - run-black
+      - run-ruff
+      - run-actionlint
+      - run-shellcheck
       - run-cspell
       - python-unit-tests
       - test-actions
@@ -318,6 +469,9 @@ jobs:
             "${{ needs.run-commitlint.result }}"
             "${{ needs.run-prettier.result }}"
             "${{ needs.run-black.result }}"
+            "${{ needs.run-ruff.result }}"
+            "${{ needs.run-actionlint.result }}"
+            "${{ needs.run-shellcheck.result }}"
             "${{ needs.run-cspell.result }}"
             "${{ needs.python-unit-tests.result }}"
             "${{ needs.test-actions.result }}"

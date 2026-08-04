@@ -1,11 +1,10 @@
 # Update CircleCI Orbs :arrows_counterclockwise:
 
-This GitHub Action automatically updates CircleCI orbs to their latest versions and creates a pull request with the
-changes.
+This GitHub Action updates CircleCI orbs and creates a pull request.
 
 > [!IMPORTANT]  
-> This action works with orbs from the CircleCI Public orb registry that follow the standard versioning pattern. It
-> fetches the latest releases from the corresponding GitHub repositories.
+> This action supports orbs from the CircleCI Public orb registry with the
+> standard version pattern. It gets the latest published version from that registry.
 
 ## :rocket: Usage
 
@@ -33,23 +32,24 @@ jobs:
 
 ## :gear: Inputs
 
-| Input                  | Description                                                                                | Required           | Default                |
-| ---------------------- | ------------------------------------------------------------------------------------------ | ------------------ | ---------------------- |
-| `base-branch`          | Base branch for the pull request                                                           | :white_check_mark: | `main`                 |
-| `token`                | GitHub token for authentication                                                            | :x:                | `${{ github.token }}`  |
-| `branch-prefix`        | Prefix for the update branch                                                               | :x:                | `update-orbs`          |
-| `pr-title`             | Title for the pull request                                                                 | :x:                | `Update CircleCI Orbs` |
-| `commit-message`       | Commit message for the update                                                              | :x:                | `Update CircleCI orbs` |
-| `circleci-config-file` | Path to CircleCI config file                                                               | :x:                | `.circleci/config.yml` |
-| `yq-version`           | Version of yq tool to use                                                                  | :x:                | `v4.44.1`              |
-| `app-slug`             | GitHub App slug for commit attribution                                                     | :x:                | -                      |
-| `auto-merge`           | Whether automatic merge should be enabled for the PR                                       | :x:                | `false`                |
-| `merge-method`         | Merge method when auto-merging (`merge`, `squash`, `rebase`)                               | :x:                | `merge`                |
-| `skip-if-pr-exists`    | Skip creating a new PR if an open PR with the same title already exists on the base branch | :x:                | `false`                |
-| `dry-run`              | Run without creating a PR                                                                  | :x:                | `false`                |
+| Input                  | Description                                                 | Required           | Default                |
+| ---------------------- | ----------------------------------------------------------- | ------------------ | ---------------------- |
+| `base-branch`          | Base branch for the pull request                            | :white_check_mark: | `main`                 |
+| `token`                | GitHub token for authentication                             | :x:                | `${{ github.token }}`  |
+| `branch-prefix`        | Prefix for the update branch                                | :x:                | `update-orbs`          |
+| `pr-title`             | Title of the pull request                                   | :x:                | `Update CircleCI Orbs` |
+| `commit-message`       | Commit message for the update                               | :x:                | `Update CircleCI orbs` |
+| `circleci-config-file` | Path to the CircleCI configuration file                     | :x:                | `.circleci/config.yml` |
+| `yq-version`           | Version of yq                                               | :x:                | `v4.44.1`              |
+| `app-slug`             | GitHub App slug for commit attribution                      | :x:                | -                      |
+| `auto-merge`           | Enable automatic pull request merge                         | :x:                | `false`                |
+| `merge-method`         | Merge method: `merge`, `squash`, or `rebase`                | :x:                | `merge`                |
+| `skip-if-pr-exists`    | Skip a new pull request when one with the same title exists | :x:                | `false`                |
+| `dry-run`              | Run without creating a pull request                         | :x:                | `false`                |
 
 ## :warning: Prerequisites
 
-- Your repository must have a CircleCI configuration file (`.circleci/config.yml` by default)
-- The configuration must contain orbs from the CircleCI Public orb registry
-- The action requires write permissions to create branches and pull requests
+- Add a CircleCI configuration file. The default is `.circleci/config.yml`.
+- The configuration must contain orbs from the CircleCI Public orb registry.
+- Give the action write permissions to create branches and pull requests.
+- Linux and macOS runners with x86_64 or arm64 CPUs are supported.
