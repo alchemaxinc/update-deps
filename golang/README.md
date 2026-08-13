@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Go Dependencies
-        uses: alchemaxinc/update-deps/golang@v2.11.2
+        uses: alchemaxinc/update-deps/golang@v2.11.3
         with:
           token: ${{ github.token }}
           base-branch: 'main'
