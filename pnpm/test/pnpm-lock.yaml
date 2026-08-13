@@ -7,16 +7,51 @@ settings:
 importers:
   .:
     dependencies:
+      is-odd:
+        specifier: 2.0.0
+        version: 2.0.0
       lodash:
         specifier: ^4.17.0
         version: 4.18.1
+      semver:
+        specifier: 7.0.0
+        version: 7.0.0
 
 packages:
+  is-number@4.0.0:
+    resolution:
+      {
+        integrity: sha512-rSklcAIlf1OmFdyAqbnWTLVelsQ58uvZ66S/ZyawjWqIviTWCjg2PzVGw8WUA+nNuPTqb4wgA+NszrJ+08LlgQ==,
+      }
+    engines: { node: '>=0.10.0' }
+
+  is-odd@2.0.0:
+    resolution:
+      {
+        integrity: sha512-OTiixgpZAT1M4NHgS5IguFp/Vz2VI3U7Goh4/HA1adtwyLtSBrxYlcSYkhpAE07s4fKEcjrFxyvtQBND4vFQyQ==,
+      }
+    engines: { node: '>=0.10.0' }
+
   lodash@4.18.1:
     resolution:
       {
         integrity: sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==,
       }
 
+  semver@7.0.0:
+    resolution:
+      {
+        integrity: sha512-+GB6zVA9LWh6zovYQLALHwv5rb2PHGlJi3lfiqIHxR0uuwCgefcOJc59v9fv1w8GbStwxuuqqAjI9NMAOOgq1A==,
+      }
+    hasBin: true
+
 snapshots:
+  is-number@4.0.0: {}
+
+  is-odd@2.0.0:
+    dependencies:
+      is-number: 4.0.0
+
   lodash@4.18.1: {}
+
+  semver@7.0.0: {}

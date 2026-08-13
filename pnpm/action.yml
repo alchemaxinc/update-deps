@@ -29,7 +29,7 @@ inputs:
 
   excluded-packages:
     required: false
-    description: 'Comma-separated packages to exclude from updates'
+    description: 'Comma- or newline-separated packages to exclude from updates'
 
   relock:
     required: false
@@ -110,13 +110,13 @@ runs:
         EXCLUDED_PACKAGES: ${{ inputs.excluded-packages }}
         RELOCK: ${{ inputs.relock }}
       run: |
+        # Entries are separated by commas, newlines, or both.
         args=()
-        IFS=',' read -ra excluded <<< "$EXCLUDED_PACKAGES"
-        for pkg in "${excluded[@]}"; do
+        while IFS= read -r pkg; do
           pkg=$(echo "$pkg" | xargs)
           [ -z "$pkg" ] && continue
           args+=("!$pkg")
-        done
+        done <<< "${EXCLUDED_PACKAGES//,/$'\n'}"
 
         if [ "${#args[@]}" -gt 0 ]; then
           pnpm update --latest --ignore-scripts '*' "${args[@]}"

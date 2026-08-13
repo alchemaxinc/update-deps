@@ -377,6 +377,9 @@ jobs:
         with:
           dry-run: 'true'
           base-branch: main
+          excluded-packages: |
+            is-odd,
+            semver
 
       - name: Verify pnpm fixture
         run: bash pnpm/test/verify-update.sh
