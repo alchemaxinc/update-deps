@@ -37,7 +37,7 @@ jobs:
 | `branch-prefix`     | Prefix for the update branch                                | :x:                | `update-dependencies`      |
 | `pr-title`          | Title of the pull request                                   | :x:                | `Update pnpm Dependencies` |
 | `commit-message`    | Commit message for the update                               | :x:                | `Update pnpm dependencies` |
-| `excluded-packages` | Comma-separated packages to exclude                         | :x:                | -                          |
+| `excluded-packages` | Comma- or newline-separated packages to exclude             | :x:                | -                          |
 | `relock`            | Regenerate `pnpm-lock.yaml`                                 | :x:                | `false`                    |
 | `app-slug`          | GitHub App slug for commit attribution                      | :x:                | -                          |
 | `auto-merge`        | Enable automatic pull request merge                         | :x:                | `false`                    |
@@ -63,4 +63,4 @@ pnpm applies these updates. Note these effects:
 - pnpm replaces a `"*"` range with a caret range, for example `^1.3.0`.
 - The action passes `excluded-packages` entries to pnpm as negation patterns
   (`!<package>`). Plain package names work. pnpm also supports glob patterns
-  such as `@scope/*`.
+  such as `@scope/*`. Separate entries with commas, newlines, or both.
