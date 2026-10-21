@@ -50,6 +50,12 @@ _FROM_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Match `COPY [--flag ...] --from=<ref>`. The flags can come in any order.
+_COPY_FROM_RE = re.compile(
+    r"^\s*COPY(?:\s+--\S+)*?\s+--from=(?P<ref>\S+)",
+    re.IGNORECASE,
+)
+
 
 def _split_image_ref(ref: str) -> tuple[str, str, str] | None:
     """Split an image reference into (registry, repository, tag).
@@ -90,8 +96,9 @@ def _split_image_ref(ref: str) -> tuple[str, str, str] | None:
 def scan_dockerfile(path: Path) -> list[ImageRef]:
     """Return image references from a Dockerfile without stage aliases.
 
-    First collect each ``AS <alias>`` token. Then skip a later ``FROM <token>``
-    when the token matches an alias in the same file.
+    Read ``FROM <ref>`` and ``COPY --from=<ref>`` lines. First collect each
+    ``AS <alias>`` token. Then skip a later reference when the token matches an
+    alias in the same file.
     """
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -102,6 +109,9 @@ def scan_dockerfile(path: Path) -> list[ImageRef]:
     for idx, line in enumerate(lines, start=1):
         match = _FROM_RE.match(line)
         if not match:
+            copy_match = _COPY_FROM_RE.match(line)
+            if copy_match:
+                parsed.append((idx, copy_match.group("ref"), None))
             continue
 
         parsed.append((idx, match.group("ref"), match.group("alias")))
@@ -257,14 +267,14 @@ def find_markdown_occurrences(
 
 
 def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
-    """Replace the tag on the matching ``FROM`` line."""
+    """Replace the tag on the matching ``FROM`` or ``COPY --from`` line."""
     lines = text.splitlines(keepends=True)
     target = ref.line_number - 1
     if target < 0 or target >= len(lines):
         return text
 
     line = lines[target]
-    match = _FROM_RE.match(line)
+    match = _FROM_RE.match(line) or _COPY_FROM_RE.match(line)
     if not match:
         return text
 
@@ -273,7 +283,7 @@ def replace_dockerfile_tag(text: str, ref: ImageRef, new_tag: str) -> str:
         return text
 
     new_ref = old_ref[: -len(ref.tag)] + new_tag
-    lines[target] = line.replace(old_ref, new_ref, 1)
+    lines[target] = line[: match.start("ref")] + new_ref + line[match.end("ref") :]
     return "".join(lines)
 
 

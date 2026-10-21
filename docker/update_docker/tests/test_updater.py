@@ -36,7 +36,8 @@ class TestUpdater(unittest.TestCase):
         (self.root / "Dockerfile").write_text(
             "FROM rust:1.94-alpine AS builder\n"
             "FROM getmeili/meilisearch:v1.42.1\n"
-            "FROM public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0\n",
+            "COPY --from=builder /build/app /app\n"
+            "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0 /lambda-adapter /opt/extensions/lambda-adapter\n",
             encoding="utf-8",
         )
         (self.root / "docker-compose.yml").write_text(
@@ -71,6 +72,7 @@ class TestUpdater(unittest.TestCase):
         self.assertIn("public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0", dockerfile)
         # Do not rewrite the stage alias.
         self.assertIn("AS builder", dockerfile)
+        self.assertIn("COPY --from=builder /build/app /app\n", dockerfile)
         # Update the compose file.
         self.assertIn("redis:7.4", compose)
 
@@ -93,7 +95,7 @@ class TestUpdater(unittest.TestCase):
         dockerfile = (self.root / "Dockerfile").read_text(encoding="utf-8")
         # Keep the stage alias, --platform-less FROM lines, and trailing newline
         # after a one-line tag replacement.
-        self.assertEqual(dockerfile.count("\n"), 3)
+        self.assertEqual(dockerfile.count("\n"), 4)
         self.assertTrue(dockerfile.endswith("\n"))
 
     def test_markdown_opt_in(self):

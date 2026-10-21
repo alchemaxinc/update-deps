@@ -3,7 +3,8 @@
 This GitHub Action scans `Dockerfile` and `docker-compose` files. It can also
 scan Markdown files. It finds Docker image references and gets the latest
 matching tag with [`crane`](https://github.com/google/go-containerregistry).
-It opens a pull request with the updated tags.
+It opens a pull request with the updated tags. In a Dockerfile, the action
+reads `FROM <image>` and `COPY --from=<image>` lines.
 
 Tag matching preserves variants. `rust:1.94-alpine` updates to the latest
 `<x.y>-alpine`, not `1.95-slim-bookworm` or `latest`. It also preserves pin
@@ -73,7 +74,7 @@ selected tag at the original dot depth.
 
 Version 1 skips references with `@sha256:` digest pins. It also skips
 `FROM scratch` and stage aliases in multi-stage Dockerfiles, such as
-`FROM builder`.
+`FROM builder` and `COPY --from=builder`.
 
 ## :gear: Inputs
 
