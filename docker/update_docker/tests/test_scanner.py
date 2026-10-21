@@ -95,6 +95,44 @@ class TestScanDockerfile(unittest.TestCase):
         self.assertEqual(refs[0].repo, "library/rust")
         self.assertEqual(refs[0].tag, "1.94-alpine")
 
+    def test_copy_from(self):
+        cases = [
+            (
+                "image",
+                "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0 /lambda-adapter /opt/extensions/lambda-adapter\n",
+                ["awsguru/aws-lambda-adapter"],
+            ),
+            (
+                "flag before from",
+                "COPY --chown=app:app --from=alpine:3.20 /etc/ssl /etc/ssl\n",
+                ["library/alpine"],
+            ),
+            ("lowercase", "copy --from=alpine:3.20 /a /b\n", ["library/alpine"]),
+            ("stage alias", "COPY --from=builder /a /b\n", []),
+            ("stage index", "COPY --from=0 /a /b\n", []),
+            ("no from", "COPY alpine:3.20 /b\n", []),
+        ]
+        for name, line, expected in cases:
+            with self.subTest(name):
+                path = self._write("Dockerfile", "FROM scratch AS builder\n" + line)
+                refs = scanner.scan_dockerfile(path)
+                self.assertEqual([r.repo for r in refs], expected)
+                for ref in refs:
+                    self.assertEqual(ref.line_number, 2)
+
+    def test_replace_copy_from_tag(self):
+        path = self._write(
+            "Dockerfile",
+            "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.0 /lambda-adapter /opt/extensions/lambda-adapter\n",
+        )
+        refs = scanner.scan_dockerfile(path)
+        text = path.read_text(encoding="utf-8")
+        updated = scanner.replace_dockerfile_tag(text, refs[0], "1.1.0")
+        self.assertEqual(
+            updated,
+            "COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0 /lambda-adapter /opt/extensions/lambda-adapter\n",
+        )
+
     def test_replace_dockerfile_tag(self):
         path = self._write("Dockerfile", "FROM rust:1.94-alpine AS builder\n")
         refs = scanner.scan_dockerfile(path)
